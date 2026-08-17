@@ -34,7 +34,15 @@ This repository contains the firmware for a dual-MCU IoT telemetry node, utilizi
 │       └── wifi_mqtt_client.h
 └── stm32_firmware/
     ├── CMakeLists.txt       # STM32 CMake configuration
-    ├── include/             # STM32 headers
+
+## Documentation
+
+Detailed design and implementation documents are in the `docs/` directory:
+
+- [Implementation Plan](docs/1_implementation_plan.md): Followed design implementation tasks, acceptance criteria, and open questions.
+- [Implementation Steps](docs/2_Steps.md): Phase-by-phase step list for the common layer, STM32 low-power firmware, ADC/DMA pipeline, handshake, and ESP32 MQTT pipeline.
+- [Architecture](docs/3_Architecture.md): System architecture diagram (Mermaid) and component interactions.
+- [Software Design](docs/SOFTWARE_DESIGN.md): Expanded software design, data flow, task architecture, and operational notes.
     │   ├── dma_adc.h
     │   ├── power_manager.h
     │   └── uart_handshake.h
