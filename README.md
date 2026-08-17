@@ -33,7 +33,17 @@ This repository contains the firmware for a dual-MCU IoT telemetry node, utilizi
 │       ├── wifi_mqtt_client.cpp
 │       └── wifi_mqtt_client.h
 └── stm32_firmware/
-    ├── CMakeLists.txt       # STM32 CMake configuration
+   ├── CMakeLists.txt       # STM32 CMake configuration
+   ├── include/             # STM32 headers
+   │   ├── dma_adc.h
+   │   ├── power_manager.h
+   │   └── uart_handshake.h
+   └── src/                 # STM32 bare-metal C source code
+      ├── dma_adc.c
+      ├── main.c
+      ├── power_manager.c
+      └── uart_handshake.c
+```
 
 ## Documentation
 
@@ -43,14 +53,52 @@ Detailed design and implementation documents are in the `docs/` directory:
 - [Implementation Steps](docs/2_Steps.md): Phase-by-phase step list for the common layer, STM32 low-power firmware, ADC/DMA pipeline, handshake, and ESP32 MQTT pipeline.
 - [Architecture](docs/3_Architecture.md): System architecture diagram (Mermaid) and component interactions.
 - [Software Design](docs/SOFTWARE_DESIGN.md): Expanded software design, data flow, task architecture, and operational notes.
-    │   ├── dma_adc.h
-    │   ├── power_manager.h
-    │   └── uart_handshake.h
-    └── src/                 # STM32 bare-metal C source code
-        ├── dma_adc.c
-        ├── main.c
-        ├── power_manager.c
-        └── uart_handshake.c
+
+## Architecture Diagram
+
+```mermaid
+graph TB
+   subgraph Power_Supply ["Power & Energy Subsystem"]
+      Battery["Battery Source"]
+      Regulator["LDO / Power Control"]
+   end
+
+   subgraph STM32_Node ["STM32 MCU (Ultra-Low-Power Core)"]
+      StopMode["Stop Mode & Clock Gating"]
+      GPIO["Unused GPIOs (Analog Mode)"]
+      Sensors["Sensors & Battery AFE"]
+      ADC["ADC Peripheral"]
+      DMA["DMA Circular Buffer in RAM"]
+      WakeUp["Wake-Up Interrupt"]
+      UART_TX["UART Transmitter"]
+
+      Sensors -->|Continuous Sampling| ADC
+      ADC -->|Direct Memory Access| DMA
+      DMA -->|Threshold Exceeded| WakeUp
+      WakeUp --> UART_TX
+   end
+
+   subgraph ESP32_Node ["ESP32 MCU (Wireless Gateway)"]
+      UART_RX["UART Receiver & Parser"]
+      JSON["JSON Formatter"]
+      WiFi["Wi-Fi / MQTT Client"]
+
+      UART_RX --> JSON
+      JSON --> WiFi
+   end
+
+   subgraph Cloud_Infrastructure ["Cloud Platform"]
+      Broker["MQTT Broker"]
+      Dashboard["vilisto.insight / Dashboard"]
+   end
+
+   Battery --> Regulator
+   Regulator --> STM32_Node
+   Regulator --> ESP32_Node
+    
+   UART_TX -->|Secure UART Packet| UART_RX
+   WiFi -->|MQTT Publish via TLS| Broker
+   Broker --> Dashboard
 ```
 
 ## Protocol Specifications
