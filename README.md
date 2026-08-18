@@ -89,7 +89,7 @@ graph TB
 
    subgraph Cloud_Infrastructure ["Cloud Platform"]
       Broker["MQTT Broker"]
-      Dashboard["vilisto.insight / Dashboard"]
+      Dashboard[" Dashboard"]
    end
 
    Battery --> Regulator
