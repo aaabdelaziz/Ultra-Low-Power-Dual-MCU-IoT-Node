@@ -1,0 +1,11 @@
+## Component Manager manifest.
+##
+## As of ESP-IDF v6, the "mqtt" component is no longer bundled with core
+## esp-idf - it moved to the Component Registry (components.espressif.com)
+## under the name "espressif/mqtt" (NOT "espressif/esp-mqtt", which does
+## not exist and returns a 404 - confirmed by hand against the registry).
+## Declaring it here is what makes `#include "mqtt_client.h"` and
+## esp_mqtt_client_* resolve again; without this, CMake fails with
+## "Failed to resolve component 'mqtt' ... unknown name."
+dependencies:
+  espressif/mqtt: "*"

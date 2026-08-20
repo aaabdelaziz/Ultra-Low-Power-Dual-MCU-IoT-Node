@@ -82,20 +82,22 @@ void wifi_mqtt_init(void) {
 
     // For demonstration, you would normally replace WIFI_SSID/PASS with actual strings or menuconfig values.
     // If menuconfig is not used, replace with hardcoded strings (e.g., "my_ssid").
+    //
+    // Zero-init the whole struct, then fill in only ssid/password via
+    // strncpy. wifi_sta_config_t has 30+ members (scan_method, pmf_cfg,
+    // he_*/vht_* 802.11 feature flags, ...); a partial designated
+    // initializer naming only .ssid/.password left the rest at their
+    // (correct, safe) zero defaults, but GCC's -Wmissing-field-initializers
+    // treats that as an error in this C++ build. `= {}` says the same
+    // thing without tripping the check. ssid/password are fixed-size
+    // uint8_t arrays, not pointers, so they need strncpy rather than `=`.
+    wifi_config_t wifi_config = {};
     #if defined(CONFIG_ESP_WIFI_SSID)
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = WIFI_SSID,
-            .password = WIFI_PASS,
-        },
-    };
+    strncpy(reinterpret_cast<char *>(wifi_config.sta.ssid), WIFI_SSID, sizeof(wifi_config.sta.ssid));
+    strncpy(reinterpret_cast<char *>(wifi_config.sta.password), WIFI_PASS, sizeof(wifi_config.sta.password));
     #else
-    wifi_config_t wifi_config = {
-        .sta = {
-            .ssid = "YOUR_SSID",
-            .password = "YOUR_PASSWORD",
-        },
-    };
+    strncpy(reinterpret_cast<char *>(wifi_config.sta.ssid), "YOUR_SSID", sizeof(wifi_config.sta.ssid));
+    strncpy(reinterpret_cast<char *>(wifi_config.sta.password), "YOUR_PASSWORD", sizeof(wifi_config.sta.password));
     #endif
 
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_STA) );
@@ -108,15 +110,19 @@ void wifi_mqtt_init(void) {
     const char * broker_uri = "mqtt://test.mosquitto.org";
     #endif
 
-    esp_mqtt_client_config_t mqtt_cfg = {
-        .broker = {
-            .address = {
-                .uri = broker_uri,
-            }
-        }
-    };
+    // Same missing-field-initializers reasoning as wifi_config above:
+    // esp_mqtt_client_config_t has broker/credentials/session/network/
+    // task/buffer/outbox sub-structs; only broker.address.uri is set here,
+    // account it explicitly instead of via a partial aggregate literal.
+    esp_mqtt_client_config_t mqtt_cfg = {};
+    mqtt_cfg.broker.address.uri = broker_uri;
+
     mqtt_client = esp_mqtt_client_init(&mqtt_cfg);
-    esp_mqtt_client_register_event(mqtt_client, ESP_EVENT_ANY_ID, mqtt_event_handler, NULL);
+    // ESP_EVENT_ANY_ID is `#define ESP_EVENT_ANY_ID -1` (a plain int).
+    // esp_mqtt_client_register_event's second parameter is the enum type
+    // esp_mqtt_event_id_t; C++ (unlike C) will not implicitly convert an
+    // int to an enum, so this needs an explicit cast.
+    esp_mqtt_client_register_event(mqtt_client, static_cast<esp_mqtt_event_id_t>(ESP_EVENT_ANY_ID), mqtt_event_handler, NULL);
 }
 
 void mqtt_publisher_task(void *pvParameters) {

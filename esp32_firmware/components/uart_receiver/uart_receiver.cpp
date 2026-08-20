@@ -26,14 +26,22 @@ static QueueHandle_t out_queue;
 void uart_receiver_init(QueueHandle_t data_queue) {
     out_queue = data_queue;
     
-    uart_config_t uart_config = {
-        .baud_rate = 115200,
-        .data_bits = UART_DATA_8_BITS,
-        .parity    = UART_PARITY_DISABLE,
-        .stop_bits = UART_STOP_BITS_1,
-        .flow_ctrl = UART_HW_FLOWCTRL_DISABLE,
-        .source_clk = UART_SCLK_DEFAULT,
-    };
+    /* Zero-initialize first, then assign field-by-field. A partial
+     * designated initializer (`= { .baud_rate = ..., ... }`) leaves any
+     * struct member this code doesn't name - like uart_config_t's
+     * rx_flow_ctrl_thresh/flags added in newer ESP-IDF versions - as an
+     * implicit zero too, but GCC's -Wmissing-field-initializers (an error
+     * here, not just a warning, in this C++ build) flags that as
+     * suspicious. Explicit `= {}` plus assignments says the same thing
+     * without tripping the check, and won't need editing again if the
+     * struct grows further. */
+    uart_config_t uart_config = {};
+    uart_config.baud_rate  = 115200;
+    uart_config.data_bits  = UART_DATA_8_BITS;
+    uart_config.parity     = UART_PARITY_DISABLE;
+    uart_config.stop_bits  = UART_STOP_BITS_1;
+    uart_config.flow_ctrl  = UART_HW_FLOWCTRL_DISABLE;
+    uart_config.source_clk = UART_SCLK_DEFAULT;
     
     ESP_ERROR_CHECK(uart_driver_install(UART_NUM, BUF_SIZE * 2, 0, 0, NULL, 0));
     ESP_ERROR_CHECK(uart_param_config(UART_NUM, &uart_config));

@@ -1,22 +1,12 @@
 cmake_minimum_required(VERSION 3.16)
-project(esp32_firmware)
 
-# Placeholder CMake for ESP32 firmware; adapt to ESP-IDF or your build system.
-add_executable(esp32_firmware
-  main.cpp
-  uart_receiver/uart_receiver.cpp
-  wifi_mqtt_client/wifi_mqtt_client.cpp
-)
-
-target_include_directories(esp32_firmware PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-cmake_minimum_required(VERSION 3.16)
-include($ENV{IDF_PATH}/tools/cmake/project.cmake)
-project(esp32_firmware)
-# The following lines of boilerplate have to be in your project's
-# CMakeLists in this exact order for cmake to work correctly
-cmake_minimum_required(VERSION 3.16)
-
-# Include the ESP-IDF build system
+# Standard ESP-IDF project bootstrap. This must run *before* project() below:
+# it sets CMAKE_TOOLCHAIN_FILE to ESP-IDF's xtensa cross-compiler toolchain
+# file so the upcoming project() call configures for the target MCU instead
+# of the host compiler. (A previous version of this file called a stray
+# `project(esp32_firmware)` here first, which locked in the host AppleClang
+# compiler into the CMake cache before this include ever ran - that bug is
+# what this ordering avoids.)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 
 project(esp32_telemetry_node)
