@@ -1,0 +1,864 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ultra-Low-Power Dual-MCU IoT Node — Codebase Documentation</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{
+  --bg:#ffffff; --bg-alt:#f5f6f8; --card:#ffffff; --fg:#1b1f24; --fg-muted:#5b6472;
+  --border:#dde1e7; --accent:#2f6fed; --accent-2:#0f9d70; --accent-3:#b3541e;
+  --code-bg:#0d1117; --code-fg:#d6deeb; --code-border:#30363d;
+  --legacy-bg:#fdeceb; --legacy-border:#e0938d; --legacy-fg:#8a2320;
+  --warn-bg:#fff6e6; --warn-border:#e6b45c; --warn-fg:#7a4a00;
+  --diagram-fill:#eef3ff; --diagram-fill-2:#e7f8f1; --diagram-fill-3:#fff2e3;
+  --diagram-stroke:#2f6fed; --diagram-stroke-2:#0f9d70; --diagram-stroke-3:#c06a1f;
+  --diagram-text:#1b1f24; --link:#2f6fed; --table-head:#eef1f6;
+  --shadow: 0 1px 3px rgba(0,0,0,.08);
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#0d1117; --bg-alt:#12161d; --card:#161b22; --fg:#e6edf3; --fg-muted:#9aa4b2;
+    --border:#30363d; --accent:#6ea8fe; --accent-2:#3fb98f; --accent-3:#e0964a;
+    --code-bg:#010409; --code-fg:#c9d1d9; --code-border:#30363d;
+    --legacy-bg:#3a1f1e; --legacy-border:#8a3a36; --legacy-fg:#f2a6a1;
+    --warn-bg:#3a2c05; --warn-border:#b58a2b; --warn-fg:#f2c14e;
+    --diagram-fill:#1c2333; --diagram-fill-2:#132a22; --diagram-fill-3:#33230f;
+    --diagram-stroke:#6ea8fe; --diagram-stroke-2:#3fb98f; --diagram-stroke-3:#e0964a;
+    --diagram-text:#e6edf3; --link:#6ea8fe; --table-head:#1c212a;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+}
+*{box-sizing:border-box}
+body{
+  margin:0; background:var(--bg); color:var(--fg);
+  font:16px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+.wrap{max-width:1100px; margin:0 auto; padding:0 24px 80px;}
+header.hero{
+  background:linear-gradient(180deg,var(--bg-alt),var(--bg));
+  border-bottom:1px solid var(--border); padding:48px 24px 32px;
+}
+header.hero .wrap{padding:0}
+h1{font-size:2rem; margin:0 0 8px; letter-spacing:-.02em}
+.subtitle{color:var(--fg-muted); font-size:1.05rem; max-width:70ch; margin:0 0 20px}
+.badges{display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px}
+.badge{
+  font-size:.78rem; font-weight:600; padding:4px 10px; border-radius:999px;
+  border:1px solid var(--border); background:var(--card); color:var(--fg-muted);
+}
+.board-strip{display:flex; gap:20px; flex-wrap:wrap; margin-top:12px}
+.board-card{
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:14px; width:280px; box-shadow:var(--shadow);
+}
+.board-card img{width:100%; height:140px; object-fit:contain; border-radius:6px; background:#fff}
+.board-card .cap{font-size:.82rem; color:var(--fg-muted); margin-top:8px; line-height:1.4}
+.board-card .cap b{color:var(--fg)}
+nav.toc{
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:18px 22px; margin:32px 0; box-shadow:var(--shadow);
+}
+nav.toc h2{margin-top:0; font-size:1rem; text-transform:uppercase; letter-spacing:.06em; color:var(--fg-muted)}
+nav.toc ol{columns:2; column-gap:32px; padding-left:20px; margin:0}
+nav.toc li{margin-bottom:6px; break-inside:avoid}
+nav.toc a{color:var(--link); text-decoration:none; font-size:.95rem}
+nav.toc a:hover{text-decoration:underline}
+section{margin:56px 0}
+section h2{
+  font-size:1.5rem; border-bottom:2px solid var(--border); padding-bottom:10px;
+  margin-bottom:20px; scroll-margin-top:20px;
+}
+section h3{font-size:1.18rem; margin:32px 0 12px; scroll-margin-top:20px}
+section h4{font-size:1rem; margin:22px 0 8px; color:var(--fg-muted); text-transform:uppercase; letter-spacing:.04em; font-size:.85rem}
+p{margin:12px 0}
+a{color:var(--link)}
+code, .mono{font-family:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace; font-size:.88em}
+code{background:var(--bg-alt); padding:.1em .4em; border-radius:4px; border:1px solid var(--border)}
+pre{
+  background:var(--code-bg); color:var(--code-fg); border:1px solid var(--code-border);
+  border-radius:10px; padding:16px 18px; overflow-x:auto; font-size:.84rem; line-height:1.55;
+}
+pre code{background:none; border:none; padding:0; color:inherit}
+table{width:100%; border-collapse:collapse; margin:16px 0; font-size:.9rem; display:block; overflow-x:auto; white-space:nowrap}
+table.wrap-table{white-space:normal}
+th,td{text-align:left; padding:8px 12px; border-bottom:1px solid var(--border); vertical-align:top}
+th{background:var(--table-head); font-weight:600; position:sticky; top:0}
+tr:hover td{background:var(--bg-alt)}
+.card{
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:20px 24px; margin:18px 0; box-shadow:var(--shadow);
+}
+.diagram-card{
+  background:var(--card); border:1px solid var(--border); border-radius:12px;
+  padding:16px; margin:20px 0; box-shadow:var(--shadow); overflow-x:auto;
+}
+.diagram-card svg{display:block; margin:0 auto; max-width:100%; height:auto}
+.diagram-caption{font-size:.85rem; color:var(--fg-muted); text-align:center; margin-top:10px}
+.legacy{
+  background:var(--legacy-bg); border:1px solid var(--legacy-border); color:var(--legacy-fg);
+  border-radius:8px; padding:12px 16px; font-size:.9rem; margin:14px 0;
+}
+.legacy b{color:inherit}
+.note{
+  background:var(--warn-bg); border:1px solid var(--warn-border); color:var(--warn-fg);
+  border-radius:8px; padding:12px 16px; font-size:.9rem; margin:14px 0;
+}
+.pill{
+  display:inline-block; font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:5px;
+  letter-spacing:.03em; text-transform:uppercase; margin-right:6px;
+}
+.pill-mcal{background:var(--diagram-fill); color:var(--diagram-stroke); border:1px solid var(--diagram-stroke)}
+.pill-bsw{background:var(--diagram-fill-2); color:var(--diagram-stroke-2); border:1px solid var(--diagram-stroke-2)}
+.pill-app{background:var(--diagram-fill-3); color:var(--diagram-stroke-3); border:1px solid var(--diagram-stroke-3)}
+details{
+  background:var(--card); border:1px solid var(--border); border-radius:10px;
+  padding:4px 18px; margin:14px 0;
+}
+details summary{cursor:pointer; padding:12px 0; font-weight:600}
+details[open] summary{border-bottom:1px solid var(--border); margin-bottom:12px}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:20px}
+@media(max-width:820px){.grid2{grid-template-columns:1fr} nav.toc ol{columns:1}}
+footer{border-top:1px solid var(--border); padding:32px 24px; color:var(--fg-muted); font-size:.85rem}
+.diag-node{fill:var(--diagram-fill); stroke:var(--diagram-stroke); stroke-width:1.5}
+.diag-node-2{fill:var(--diagram-fill-2); stroke:var(--diagram-stroke-2); stroke-width:1.5}
+.diag-node-3{fill:var(--diagram-fill-3); stroke:var(--diagram-stroke-3); stroke-width:1.5}
+.diag-text{fill:var(--diagram-text); font:600 13px ui-monospace,monospace; text-anchor:middle}
+.diag-text-sm{fill:var(--diagram-text); font:11px ui-monospace,monospace; text-anchor:middle}
+.diag-label{fill:var(--fg-muted); font:11px -apple-system,sans-serif; text-anchor:middle}
+.diag-arrow{stroke:var(--fg-muted); stroke-width:1.5; fill:none}
+.diag-arrow-accent{stroke:var(--accent); stroke-width:2; fill:none}
+</style>
+</head>
+<body>
+
+<header class="hero">
+<div class="wrap">
+  <div class="badges">
+    <span class="badge">STM32L476RG · Cortex-M4F</span>
+    <span class="badge">ESP32 · ESP-IDF v6</span>
+    <span class="badge">Bare-metal + FreeRTOS</span>
+    <span class="badge">Both firmwares build clean</span>
+  </div>
+  <h1>Ultra-Low-Power Dual-MCU IoT Telemetry Node</h1>
+  <p class="subtitle">
+    A two-chip sensor node: an STM32L4 spends &gt;99% of its life in STOP2 deep sleep
+    sampling battery/temperature/ADC channels via DMA, wakes an ESP32 over UART only
+    when a batch of samples is ready, and the ESP32 publishes that telemetry to an
+    MQTT broker over Wi-Fi. This page documents the actual, currently-compiling
+    source code — architecture, every function's role, register-level configuration,
+    protocol framing, and the full call/data flow between layers.
+  </p>
+  <div class="board-strip">
+    <div class="board-card">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/a/af/Nucleo-board.jpg" alt="STM32 Nucleo-64 development board">
+      <div class="cap"><b>STM32 Nucleo-64 form factor</b> (representative photo — this project targets an STM32L476RG on this board footprint). Photo: Avandalen / Wikimedia Commons, CC BY-SA 4.0.</div>
+    </div>
+    <div class="board-card">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/2/20/ESP32_Espressif_ESP-WROOM-32_Dev_Board.jpg" alt="ESP32 ESP-WROOM-32 development board">
+      <div class="cap"><b>ESP32 DevKit (ESP-WROOM-32)</b> — the connectivity/gateway MCU. Photo: Ubahnverleih / Wikimedia Commons, CC0.</div>
+    </div>
+  </div>
+</div>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+<h2>Contents</h2>
+<ol>
+  <li><a href="#overview">1. Project Overview</a></li>
+  <li><a href="#hardware">2. Hardware &amp; System Block Diagram</a></li>
+  <li><a href="#layers">3. Layered Software Architecture</a></li>
+  <li><a href="#repo-map">4. Repository Map</a></li>
+  <li><a href="#data-flow">5. End-to-End Data Flow</a></li>
+  <li><a href="#stm32-deep-dive">6. STM32 Firmware Deep Dive</a></li>
+  <li><a href="#esp32-deep-dive">7. ESP32 Firmware Deep Dive</a></li>
+  <li><a href="#protocol">8. Wire Protocol &amp; CRC16</a></li>
+  <li><a href="#timing">9. Full-Cycle Timing Diagram</a></li>
+  <li><a href="#call-flow">10. Cross-Layer Function Call Flow</a></li>
+  <li><a href="#build">11. Build System &amp; Verified Compilation</a></li>
+  <li><a href="#history">12. Engineering Notes: Bugs Found &amp; Fixed</a></li>
+  <li><a href="#docs">13. Project Docs Index</a></li>
+  <li><a href="#glossary">14. Glossary</a></li>
+</ol>
+</nav>
+
+<section id="overview">
+<h2>1. Project Overview</h2>
+<p>
+  This repository is firmware for a two-MCU sensor node designed around one constraint:
+  minimize average current draw. The STM32 side never needs a general-purpose OS or
+  connectivity stack — it is bare-metal C directly programming CMSIS registers. The
+  ESP32 side needs Wi-Fi and TCP/MQTT, which is realistically only practical on top of
+  ESP-IDF's FreeRTOS-based stack, so it runs two FreeRTOS tasks connected by a queue.
+  The two chips talk over a single UART link using a small framed binary protocol
+  defined once, in <code>common/protocol_spec.h</code>, and compiled into both firmwares.
+</p>
+<table>
+<tr><th>MCU</th><th>Role</th><th>Language / runtime</th><th>Power posture</th></tr>
+<tr><td><b>STM32L476RG</b></td><td>Sensing + power management</td><td>Bare-metal C, CMSIS registers, no OS</td><td>&gt;99% time in STOP2 (deep sleep, SRAM retained)</td></tr>
+<tr><td><b>ESP32 (ESP-WROOM-32)</b></td><td>Connectivity gateway</td><td>C++ on ESP-IDF / FreeRTOS</td><td>Idle/light-sleep between UART bursts (Wi-Fi power-save managed by ESP-IDF)</td></tr>
+</table>
+<p>
+  Both firmware trees in this repository are <b>real, currently-compiling builds</b>,
+  not illustrative pseudocode — see <a href="#build">§11</a> for the actual toolchain
+  output. Every register name, pin assignment and function signature described below
+  is copied from the live source tree, not paraphrased.
+</p>
+</section>
+
+<section id="hardware">
+<h2>2. Hardware &amp; System Block Diagram</h2>
+<p>
+  Sensors feed the STM32's ADC; ADC conversions land directly in SRAM via DMA with
+  zero CPU involvement. Once a full circular-buffer lap completes, the STM32 wakes,
+  averages the samples, and bursts one telemetry frame to the ESP32 over UART. The
+  ESP32 validates the frame, ACKs it, queues it internally, and a second task
+  publishes it to an MQTT broker over Wi-Fi.
+</p>
+<div class="diagram-card">
+<svg viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <marker id="a1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker>
+</defs>
+<rect x="16" y="16" width="430" height="348" rx="14" class="diag-node" fill-opacity="0.5"/>
+<text x="231" y="42" class="diag-text">STM32L476RG — Sensing Node</text>
+
+<rect x="40" y="64" width="150" height="50" rx="8" class="diag-node"/>
+<text x="115" y="94" class="diag-text-sm">Sensors / Battery</text>
+
+<rect x="40" y="150" width="150" height="50" rx="8" class="diag-node"/>
+<text x="115" y="180" class="diag-text-sm">ADC1 (3ch scan)</text>
+
+<rect x="250" y="150" width="170" height="50" rx="8" class="diag-node"/>
+<text x="335" y="174" class="diag-text-sm">DMA1 Ch1</text>
+<text x="335" y="188" class="diag-text-sm">circular SRAM buffer</text>
+
+<rect x="140" y="236" width="170" height="50" rx="8" class="diag-node"/>
+<text x="225" y="260" class="diag-text-sm">CPU (wakes on</text>
+<text x="225" y="274" class="diag-text-sm">DMA TC IRQ)</text>
+
+<rect x="140" y="312" width="170" height="40" rx="8" class="diag-node"/>
+<text x="225" y="337" class="diag-text-sm">USART2 TX/RX + WAKE GPIO</text>
+
+<path d="M115,114 L115,150" class="diag-arrow" marker-end="url(#a1)"/>
+<path d="M190,175 L250,175" class="diag-arrow" marker-end="url(#a1)"/>
+<path d="M300,200 L255,236" class="diag-arrow" marker-end="url(#a1)"/>
+<path d="M225,286 L225,312" class="diag-arrow" marker-end="url(#a1)"/>
+
+<rect x="534" y="16" width="430" height="348" rx="14" class="diag-node-2" fill-opacity="0.5"/>
+<text x="749" y="42" class="diag-text">ESP32 — Connectivity Gateway</text>
+
+<rect x="558" y="64" width="180" height="40" rx="8" class="diag-node-2"/>
+<text x="648" y="89" class="diag-text-sm">UART1 RX/TX</text>
+
+<rect x="558" y="140" width="180" height="50" rx="8" class="diag-node-2"/>
+<text x="648" y="162" class="diag-text-sm">uart_receiver_task</text>
+<text x="648" y="176" class="diag-text-sm">(parse + CRC16 + ACK)</text>
+
+<rect x="558" y="226" width="180" height="40" rx="8" class="diag-node-2"/>
+<text x="648" y="251" class="diag-text-sm">FreeRTOS Queue (x10)</text>
+
+<rect x="558" y="302" width="180" height="50" rx="8" class="diag-node-2"/>
+<text x="648" y="324" class="diag-text-sm">mqtt_publisher_task</text>
+<text x="648" y="338" class="diag-text-sm">(JSON + esp-mqtt)</text>
+
+<rect x="800" y="302" width="150" height="50" rx="8" class="diag-node-3"/>
+<text x="875" y="324" class="diag-text-sm">Wi-Fi STA</text>
+<text x="875" y="338" class="diag-text-sm">MQTT Broker</text>
+
+<path d="M648,104 L648,140" class="diag-arrow" marker-end="url(#a1)"/>
+<path d="M648,190 L648,226" class="diag-arrow" marker-end="url(#a1)"/>
+<path d="M648,266 L648,302" class="diag-arrow" marker-end="url(#a1)"/>
+<path d="M738,327 L800,327" class="diag-arrow" marker-end="url(#a1)"/>
+
+<path d="M310,332 C 420,332 470,84 558,84" class="diag-arrow-accent" marker-end="url(#a1)"/>
+<text x="434" y="290" class="diag-label">UART frame: SYNC·LEN·payload·CRC16</text>
+<path d="M558,120 C 480,120 440,332 310,332" class="diag-arrow" stroke-dasharray="4 4" marker-end="url(#a1)"/>
+<text x="434" y="365" class="diag-label">ACK (0x06) / NACK (0x15)</text>
+</svg>
+<div class="diagram-caption">Fig. 1 — System block diagram: sensing/DMA pipeline (left) to Wi-Fi/MQTT gateway (right), connected over a single UART link.</div>
+</div>
+</section>
+
+<section id="layers">
+<h2>3. Layered Software Architecture</h2>
+<p>
+  Both firmware trees follow the same layering discipline, mapped here onto
+  MCAL / BSW(Service) / Application terminology so the responsibilities read the
+  same regardless of which MCU you're looking at:
+</p>
+<table>
+<tr><th>Layer</th><th>STM32 directory</th><th>ESP32 directory</th><th>Responsibility</th></tr>
+<tr><td><span class="pill pill-mcal">MCAL</span></td><td><code>drivers/</code></td><td><code>components/uart_receiver/</code> (driver half)</td><td>Direct register/peripheral-driver access. Knows about hardware, nothing about the telemetry protocol.</td></tr>
+<tr><td><span class="pill pill-bsw">BSW / Service</span></td><td><code>middleware/</code></td><td><code>components/uart_receiver/</code> (parser half), <code>components/wifi_mqtt_client/</code></td><td>Protocol framing, CRC, state machines, connectivity service. Bridges hardware to business logic.</td></tr>
+<tr><td><span class="pill pill-app">Application</span></td><td><code>app/src/main.c</code></td><td><code>main/main.cpp</code></td><td>Orchestration: <i>when</i> things happen, task/queue creation, the sample→transmit→sleep loop.</td></tr>
+</table>
+<div class="diagram-card">
+<svg viewBox="0 0 980 260" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker></defs>
+<text x="240" y="24" class="diag-text">STM32</text>
+<rect x="90" y="40" width="300" height="46" rx="8" class="diag-node-3"/><text x="240" y="68" class="diag-text-sm">app/src/main.c — Application</text>
+<rect x="90" y="106" width="300" height="46" rx="8" class="diag-node-2"/><text x="240" y="134" class="diag-text-sm">middleware/uart_handshake — BSW</text>
+<rect x="90" y="172" width="300" height="46" rx="8" class="diag-node"/><text x="240" y="196" class="diag-text-sm">drivers/dma_adc, power_manager,</text><text x="240" y="210" class="diag-text-sm">systick_delay — MCAL</text>
+<path d="M240,86 L240,106" class="diag-arrow" marker-end="url(#a2)"/>
+<path d="M240,152 L240,172" class="diag-arrow" marker-end="url(#a2)"/>
+
+<text x="740" y="24" class="diag-text">ESP32</text>
+<rect x="590" y="40" width="300" height="46" rx="8" class="diag-node-3"/><text x="740" y="68" class="diag-text-sm">main/main.cpp — Application</text>
+<rect x="590" y="106" width="300" height="46" rx="8" class="diag-node-2"/><text x="740" y="128" class="diag-text-sm">components/uart_receiver — BSW+MCAL</text><text x="740" y="142" class="diag-text-sm">components/wifi_mqtt_client — BSW</text>
+<rect x="590" y="172" width="300" height="46" rx="8" class="diag-node"/><text x="740" y="196" class="diag-text-sm">ESP-IDF drivers: driver/uart,</text><text x="740" y="210" class="diag-text-sm">esp_wifi, esp-mqtt — MCAL</text>
+<path d="M740,86 L740,106" class="diag-arrow" marker-end="url(#a2)"/>
+<path d="M740,152 L740,172" class="diag-arrow" marker-end="url(#a2)"/>
+</svg>
+<div class="diagram-caption">Fig. 2 — Layer stack per MCU. Arrows show the calling direction: Application calls into BSW, BSW calls into MCAL. Lower layers never call upward.</div>
+</div>
+<p class="note">
+  On the ESP32 side the <code>uart_receiver</code> component straddles MCAL+BSW: it owns
+  both the raw <code>driver/uart.h</code> calls (MCAL-ish) <i>and</i> the byte-level frame
+  parser/CRC state machine (BSW-ish) in a single file, because ESP-IDF's component
+  granularity doesn't force a further split. It's called out here rather than hidden,
+  since the STM32 side keeps the equivalent split as two separate files
+  (<code>drivers/dma_adc.c</code> vs <code>middleware/uart_handshake.c</code>).
+</p>
+</section>
+
+<section id="repo-map">
+<h2>4. Repository Map</h2>
+<table class="wrap-table">
+<tr><th>Path</th><th>Status</th><th>Role</th></tr>
+<tr><td><code>common/protocol_spec.h</code></td><td>Canonical</td><td>Shared UART frame struct, sync/ACK/NACK bytes, CRC16 — included by <b>both</b> firmwares.</td></tr>
+<tr><td><code>stm32_firmware/app/src/main.c</code></td><td>Canonical</td><td>STM32 application entry point / main loop.</td></tr>
+<tr><td><code>stm32_firmware/drivers/{src,include}/dma_adc.*</code></td><td>Canonical</td><td>ADC1 + DMA1 register-level driver.</td></tr>
+<tr><td><code>stm32_firmware/drivers/{src,include}/power_manager.*</code></td><td>Canonical</td><td>RCC/PWR/GPIO power &amp; clock-gating driver, STOP2 entry.</td></tr>
+<tr><td><code>stm32_firmware/drivers/{src,include}/systick_delay.*</code></td><td>Canonical</td><td>Blocking millisecond delay on SysTick.</td></tr>
+<tr><td><code>stm32_firmware/drivers/include/board_config.h</code></td><td>Canonical</td><td>Single source of truth for GPIOA pin/channel assignments.</td></tr>
+<tr><td><code>stm32_firmware/middleware/{src,include}/uart_handshake.*</code></td><td>Canonical</td><td>USART2 driver + frame builder + ACK wait.</td></tr>
+<tr><td><code>stm32_firmware/CMSIS/</code></td><td>Vendored</td><td>ARM CMSIS-Core + STMicroelectronics STM32L4 device pack (headers, startup file, system init) — required to actually compile; not project-original code.</td></tr>
+<tr><td><code>stm32_firmware/STM32L476RGTX_FLASH.ld</code></td><td>Canonical</td><td>Hand-written linker script (1MB Flash / 128KB RAM memory map).</td></tr>
+<tr><td><code>stm32_firmware/CMakeLists.txt</code></td><td>Canonical</td><td>arm-none-eabi-gcc cross-build definition.</td></tr>
+<tr><td><code>esp32_firmware/main/main.cpp</code></td><td>Canonical</td><td>ESP32 <code>app_main()</code>: queue + task creation.</td></tr>
+<tr><td><code>esp32_firmware/components/uart_receiver/</code></td><td>Canonical</td><td>UART1 driver + frame parser task.</td></tr>
+<tr><td><code>esp32_firmware/components/wifi_mqtt_client/</code></td><td>Canonical</td><td>Wi-Fi STA + esp-mqtt client + publisher task.</td></tr>
+<tr><td><code>esp32_firmware/CMakeLists.txt</code>, <code>main/CMakeLists.txt</code>, component <code>CMakeLists.txt</code>s</td><td>Canonical</td><td>ESP-IDF build definition.</td></tr>
+</table>
+<div class="legacy">
+  <b>Removed:</b> this tree previously contained 7 duplicate flat-file placeholders directly
+  under <code>stm32_firmware/</code> (<code>main.c</code>, <code>dma_adc.{c,h}</code>,
+  <code>power_manager.{c,h}</code>, <code>uart_handshake.{c,h}</code>) — an older, unfinished
+  skeleton that was never referenced by <code>CMakeLists.txt</code>'s source glob and caused
+  a confusing "two <code>main()</code> functions" situation. They were deleted; the layered
+  tree above (<code>app/</code>, <code>drivers/</code>, <code>middleware/</code>) is the one
+  and only STM32 source tree now. See <a href="#history">§12</a>.
+</div>
+</section>
+
+<section id="data-flow">
+<h2>5. End-to-End Data Flow</h2>
+<p>The system cycles through four states, repeating forever:</p>
+<div class="diagram-card">
+<svg viewBox="0 0 980 210" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a3" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--accent)"/></marker></defs>
+<g>
+<rect x="10" y="60" width="210" height="90" rx="10" class="diag-node"/>
+<text x="115" y="96" class="diag-text-sm">1. Sleep &amp;</text><text x="115" y="112" class="diag-text-sm">background acquire</text>
+<text x="115" y="132" class="diag-label">STOP2 + ADC/DMA free-run</text>
+
+<rect x="260" y="60" width="210" height="90" rx="10" class="diag-node-2"/>
+<text x="365" y="96" class="diag-text-sm">2. Data ready</text><text x="365" y="112" class="diag-text-sm">&amp; wakeup</text>
+<text x="365" y="132" class="diag-label">DMA TC IRQ wakes CPU</text>
+
+<rect x="510" y="60" width="210" height="90" rx="10" class="diag-node-3"/>
+<text x="615" y="96" class="diag-text-sm">3. Handshake</text><text x="615" y="112" class="diag-text-sm">&amp; transmit</text>
+<text x="615" y="132" class="diag-label">WAKE pulse → frame → ACK</text>
+
+<rect x="760" y="60" width="210" height="90" rx="10" class="diag-node"/>
+<text x="865" y="96" class="diag-text-sm">4. Publish &amp;</text><text x="865" y="112" class="diag-text-sm">return to sleep</text>
+<text x="865" y="132" class="diag-label">Queue → JSON → MQTT</text>
+
+<path d="M220,105 L260,105" class="diag-arrow-accent" marker-end="url(#a3)"/>
+<path d="M470,105 L510,105" class="diag-arrow-accent" marker-end="url(#a3)"/>
+<path d="M720,105 L760,105" class="diag-arrow-accent" marker-end="url(#a3)"/>
+<path d="M865,150 C 865,190 115,190 115,150" class="diag-arrow-accent" stroke-dasharray="4 4" marker-end="url(#a3)"/>
+<text x="490" y="200" class="diag-label">loop forever</text>
+</g>
+</svg>
+<div class="diagram-caption">Fig. 3 — The repeating 4-state cycle (matches <code>ARCHITECTURE.md</code> §3, cross-checked against the actual function calls below).</div>
+</div>
+
+<table>
+<tr><th>State</th><th>STM32 side (actual functions)</th><th>ESP32 side (actual functions)</th></tr>
+<tr><td>1. Sleep &amp; acquire</td><td>CPU in <code>pm_enter_stop_mode()</code>; ADC1+DMA1 free-run per <code>dma_adc_init()</code>'s continuous/circular config</td><td>Wi-Fi in ESP-IDF-managed power-save; <code>uart_receiver_task</code> polling <code>uart_read_bytes()</code> with a 20-tick timeout</td></tr>
+<tr><td>2. Wakeup</td><td><code>DMA1_Channel1_IRQHandler</code> sets <code>data_ready_flag</code>; <code>main()</code>'s loop sees <code>dma_adc_is_data_ready()</code></td><td>—</td></tr>
+<tr><td>3. Handshake &amp; TX</td><td><code>dma_adc_get_averaged_channel()</code> ×3 → <code>uart_wake_esp32()</code> → <code>uart_send_telemetry_and_wait_ack()</code></td><td><code>uart_receiver_task</code>'s byte state machine → <code>calculate_crc16()</code> → <code>send_response()</code> (ACK/NACK)</td></tr>
+<tr><td>4. Publish &amp; sleep</td><td><code>pm_enter_stop_mode()</code> again</td><td><code>xQueueSend()</code> → <code>mqtt_publisher_task</code>'s <code>xQueueReceive()</code> → <code>snprintf</code> JSON → <code>esp_mqtt_client_publish()</code></td></tr>
+</table>
+</section>
+
+<section id="stm32-deep-dive">
+<h2>6. STM32 Firmware Deep Dive</h2>
+
+<h3>6.1 Application entry point — <code>app/src/main.c</code></h3>
+<div class="diagram-card">
+<svg viewBox="0 0 620 620" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a4" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker></defs>
+<rect x="160" y="10" width="300" height="40" rx="20" class="diag-node"/><text x="310" y="35" class="diag-text-sm">Reset_Handler → SystemInit → main()</text>
+<path d="M310,50 L310,72" class="diag-arrow" marker-end="url(#a4)"/>
+<rect x="160" y="72" width="300" height="90" rx="8" class="diag-node"/>
+<text x="310" y="94" class="diag-text-sm">pm_init()</text>
+<text x="310" y="112" class="diag-text-sm">pm_configure_unused_gpios_analog()</text>
+<text x="310" y="130" class="diag-text-sm">pm_disable_unused_clocks()</text>
+<text x="310" y="148" class="diag-text-sm">systick_delay_init()</text>
+<path d="M310,162 L310,184" class="diag-arrow" marker-end="url(#a4)"/>
+<rect x="160" y="184" width="300" height="50" rx="8" class="diag-node"/>
+<text x="310" y="206" class="diag-text-sm">uart_handshake_init()</text>
+<text x="310" y="222" class="diag-text-sm">dma_adc_init()</text>
+<path d="M310,234 L310,256" class="diag-arrow" marker-end="url(#a4)"/>
+<rect x="160" y="256" width="300" height="36" rx="8" class="diag-node-2"/>
+<text x="310" y="279" class="diag-text-sm">dma_adc_start() — ADC+DMA free-run</text>
+<path d="M310,292 L310,314" class="diag-arrow" marker-end="url(#a4)"/>
+<rect x="120" y="314" width="380" height="40" rx="20" class="diag-node-3"/>
+<text x="310" y="339" class="diag-text-sm">while (1) — main loop</text>
+<path d="M310,354 L310,376" class="diag-arrow" marker-end="url(#a4)"/>
+<path d="M310,376 L390,376 L390,360 L330,360 Z" fill="none"/>
+<polygon points="310,376 400,404 310,432 220,404" class="diag-node"/>
+<text x="310" y="409" class="diag-text-sm">data_ready?</text>
+<text x="380" y="400" class="diag-label">yes</text>
+<text x="255" y="455" class="diag-label">no</text>
+<path d="M400,404 L470,404" class="diag-arrow" marker-end="url(#a4)"/>
+<rect x="470" y="380" width="130" height="120" rx="8" class="diag-node-2"/>
+<text x="535" y="400" class="diag-text-sm">avg ×3 channels</text>
+<text x="535" y="418" class="diag-text-sm">clear_data_ready()</text>
+<text x="535" y="436" class="diag-text-sm">uart_wake_esp32()</text>
+<text x="535" y="454" class="diag-text-sm">send_telemetry_</text>
+<text x="535" y="470" class="diag-text-sm">and_wait_ack()</text>
+<path d="M310,432 L310,470" class="diag-arrow" marker-end="url(#a4)"/>
+<path d="M535,500 L535,530 L310,530 L310,510" class="diag-arrow" marker-end="url(#a4)"/>
+<rect x="160" y="470" width="300" height="40" rx="8" class="diag-node-3"/>
+<text x="310" y="495" class="diag-text-sm">pm_enter_stop_mode() — WFI</text>
+<path d="M160,490 C 60,490 60,373 160,373" class="diag-arrow" stroke-dasharray="4 4" marker-end="url(#a4)"/>
+<text x="70" y="430" class="diag-label" transform="rotate(-90 70 430)">wakes on DMA IRQ</text>
+<path d="M310,510 C 310,560 310,560 200,560" class="diag-arrow" marker-end="url(#a4)"/>
+<path d="M200,560 C 100,560 100,404 220,404" class="diag-arrow" stroke-dasharray="4 4"/>
+<text x="150" y="580" class="diag-label">loop back to top</text>
+</svg>
+<div class="diagram-caption">Fig. 4 — <code>main()</code> control flow. Every box names the real function called, in call order.</div>
+</div>
+<p>
+  There is intentionally <b>no retry/backoff logic</b>: if <code>uart_send_telemetry_and_wait_ack()</code>
+  returns <code>false</code>, the code sets a comm-error status bit on the (already-local,
+  about-to-be-discarded) payload and moves on — the next DMA-complete cycle produces a
+  fresh sample set and tries again, so a dropped frame is superseded rather than resent.
+</p>
+
+<h3>6.2 Power &amp; clock driver — <code>drivers/src/power_manager.c</code> <span class="pill pill-mcal">MCAL</span></h3>
+<div class="diagram-card">
+<svg viewBox="0 0 700 260" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a5" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker></defs>
+<circle cx="130" cy="130" r="70" class="diag-node-3"/>
+<text x="130" y="126" class="diag-text-sm">RUN</text>
+<text x="130" y="142" class="diag-text-sm">(sampling &amp; TX)</text>
+<circle cx="500" cy="130" r="90" class="diag-node"/>
+<text x="500" y="120" class="diag-text-sm">STOP2</text>
+<text x="500" y="138" class="diag-text-sm">core+clocks off,</text>
+<text x="500" y="154" class="diag-text-sm">SRAM retained</text>
+<path d="M200,110 C 300,80 400,80 410,105" class="diag-arrow" marker-end="url(#a5)"/>
+<text x="300" y="70" class="diag-label">pm_enter_stop_mode(): SCR.CWUF, CR1.LPMS=STOP2, SCB.SLEEPDEEP, __WFI()</text>
+<path d="M410,155 C 350,200 220,200 195,150" class="diag-arrow" marker-end="url(#a5)"/>
+<text x="300" y="220" class="diag-label">DMA1 Channel1 transfer-complete IRQ fires → CPU resumes right after __WFI()</text>
+</svg>
+<div class="diagram-caption">Fig. 5 — STM32 power state machine. Only one wakeup source is armed: <code>DMA1_Channel1_IRQn</code> (via <code>dma_adc_init()</code>'s <code>NVIC_EnableIRQ</code>).</div>
+</div>
+<table class="wrap-table">
+<tr><th>Function</th><th>Registers touched</th><th>What it does</th></tr>
+<tr><td><code>pm_init()</code></td><td><code>RCC-&gt;APB1ENR1 |= RCC_APB1ENR1_PWREN</code></td><td>Clocks the PWR peripheral — without this, every later <code>PWR-&gt;*</code> write is a no-op.</td></tr>
+<tr><td><code>pm_configure_unused_gpios_analog()</code></td><td><code>RCC-&gt;AHB2ENR</code> (GPIOAEN), <code>GPIOA-&gt;MODER</code></td><td>Sets all of GPIOA to Analog mode (kills input-buffer leakage current), then re-opens exactly <code>WAKE_PIN</code> (output) and the two USART2 pins (alt-function) via <code>board_config.h</code>'s pin numbers.</td></tr>
+<tr><td><code>pm_disable_unused_clocks()</code></td><td>—</td><td>Documented no-op today (unused peripherals reset with their clocks already off) — the designated place to gate a future driver's clock if it's later added and unused.</td></tr>
+<tr><td><code>pm_enter_stop_mode()</code></td><td><code>PWR-&gt;SCR</code> (CWUF), <code>PWR-&gt;CR1</code> (LPMS=STOP2), <code>SCB-&gt;SCR</code> (SLEEPDEEP)</td><td>Clears stale wake flags, selects STOP2, arms deep-sleep, executes <code>__WFI()</code>. Execution resumes on the next line after the DMA IRQ.</td></tr>
+<tr><td><code>pm_enter_sleep_mode()</code></td><td><code>SCB-&gt;SCR</code></td><td>Plain SLEEP (peripherals stay clocked); declared in the header, not currently called by <code>main.c</code>.</td></tr>
+</table>
+
+<h3>6.3 ADC + DMA driver — <code>drivers/src/dma_adc.c</code> <span class="pill pill-mcal">MCAL</span></h3>
+<p>3 channels × 16 samples deep, fully hardware-driven once started:</p>
+<table class="wrap-table">
+<tr><th>Channel index</th><th>Pin</th><th>ADC1 input</th><th>Payload field</th></tr>
+<tr><td>0</td><td>PA1</td><td>IN6</td><td><code>battery_mv</code></td></tr>
+<tr><td>1</td><td>PA4</td><td>IN9</td><td><code>temp_sensor</code></td></tr>
+<tr><td>2</td><td>PA5</td><td>IN10</td><td><code>adc_ch1</code></td></tr>
+</table>
+<table class="wrap-table">
+<tr><th>Function</th><th>Key registers</th><th>What it does</th></tr>
+<tr><td><code>dma_adc_init()</code></td><td><code>RCC-&gt;CCIPR</code> (ADCSEL=SYSCLK), <code>ADC123_COMMON-&gt;CCR</code>, <code>ADC1-&gt;CR</code> (ADVREGEN, ADCAL), <code>DMA1_Channel1-&gt;{CPAR,CMAR,CNDTR,CCR}</code>, <code>DMA1_CSELR-&gt;CSELR</code>, <code>ADC1-&gt;{SQR1,SMPR1,SMPR2,CFGR}</code></td><td>Selects SYSCLK as the ADC's async clock, enables the internal regulator and waits ~20&micro;s, runs single-ended self-calibration, wires DMA1 Channel1 (circular, mem-increment, 16-bit, TC-interrupt) to <code>ADC1-&gt;DR</code>, programs the 3-channel sequence with 640.5-cycle sample times, and enables DMAEN+DMACFG+CONT so ADC and DMA free-run together.</td></tr>
+<tr><td><code>dma_adc_start()</code></td><td><code>DMA1_Channel1-&gt;CCR</code> (EN), <code>ADC1-&gt;CR</code> (ADSTART)</td><td>Arms DMA before starting conversion (order matters — otherwise the first samples have nowhere to go).</td></tr>
+<tr><td><code>dma_adc_stop()</code></td><td><code>ADC1-&gt;CR</code> (ADSTP), <code>DMA1_Channel1-&gt;CCR</code></td><td>Clean stop, currently unused by <code>main.c</code> but available.</td></tr>
+<tr><td><code>dma_adc_is_data_ready()</code> / <code>_clear_data_ready()</code></td><td>—</td><td>Read/clear the <code>volatile uint8_t data_ready_flag</code> set by the ISR.</td></tr>
+<tr><td><code>dma_adc_get_averaged_channel(ch)</code></td><td>—</td><td>Software mean over the 16 interleaved samples for one channel in <code>adc_buffer</code>.</td></tr>
+<tr><td><code>DMA1_Channel1_IRQHandler()</code></td><td><code>DMA1-&gt;ISR</code>/<code>IFCR</code> (TCIF1/TEIF1)</td><td>Overrides the weak default in <code>startup_stm32l476xx.s</code> by name. Acks the transfer-complete flag and sets <code>data_ready_flag = 1</code>; this is literally the STM32's only wakeup source from STOP2 in this design.</td></tr>
+</table>
+
+<h3>6.4 UART handshake middleware — <code>middleware/src/uart_handshake.c</code> <span class="pill pill-bsw">BSW</span></h3>
+<table class="wrap-table">
+<tr><th>Function</th><th>Key registers</th><th>What it does</th></tr>
+<tr><td><code>uart_handshake_init()</code></td><td><code>RCC-&gt;APB1ENR1</code> (USART2EN), <code>GPIOA-&gt;AFR[0]</code>, <code>USART2-&gt;BRR</code>, <code>USART2-&gt;CR1</code> (TE, RE, UE)</td><td>AF7-maps PA2/PA3 to USART2, sets <code>BRR = SystemCoreClock / 115200</code> (16× oversampling default), enables TX/RX/peripheral. 8N1 is already the CR1/CR2 reset default.</td></tr>
+<tr><td><code>uart_wake_esp32()</code></td><td><code>GPIOA-&gt;BSRR</code></td><td>10ms pulse on <code>WAKE_PIN</code> (atomic set then reset via BSRR), then a 100ms settle delay for the ESP32 to finish waking and bring its UART up.</td></tr>
+<tr><td><code>uart_wait_for_byte()</code> <i>(static)</i></td><td><code>USART2-&gt;ISR</code> (RXNE), <code>USART2-&gt;RDR</code></td><td>Polls for one specific byte with a loop-count timeout (not calibrated to real time — the caller only needs "did an ACK show up at all").</td></tr>
+<tr><td><code>uart_send_buffer()</code> <i>(static)</i></td><td><code>USART2-&gt;ISR</code> (TXE, TC), <code>USART2-&gt;TDR</code></td><td>Blocking byte-at-a-time transmit; waits for TC after the last byte so the caller can assume the wire is idle on return.</td></tr>
+<tr><td><code>uart_send_telemetry_and_wait_ack()</code></td><td>—</td><td>Builds the <code>uart_frame_t</code> (sync bytes, length, payload, CRC16), sends it, and blocks up to ~100000 poll iterations waiting for <code>PROTOCOL_ACK_BYTE</code>.</td></tr>
+</table>
+
+<h3>6.5 Millisecond delay — <code>drivers/src/systick_delay.c</code> <span class="pill pill-mcal">MCAL</span></h3>
+<p>
+  <code>systick_delay_init()</code> loads <code>SysTick-&gt;LOAD = SystemCoreClock/1000 - 1</code> and
+  enables the counter with the processor clock as source, no interrupt.
+  <code>delay_ms(ms)</code> busy-polls <code>SysTick_CTRL_COUNTFLAG_Msk</code> once per
+  requested millisecond — simple and sufficient for the two call sites
+  (<code>uart_wake_esp32()</code>'s 10ms/100ms pulses).
+</p>
+</section>
+
+<section id="esp32-deep-dive">
+<h2>7. ESP32 Firmware Deep Dive</h2>
+
+<h3>7.1 Application entry point — <code>main/main.cpp</code></h3>
+<p>
+  <code>app_main()</code> creates a <code>QueueHandle_t</code> sized for 10
+  <code>telemetry_payload_t</code> structs, calls <code>uart_receiver_init(queue)</code>
+  and <code>wifi_mqtt_init()</code>, spawns <code>uart_rx_task</code> (priority 5,
+  4096-byte stack) and <code>mqtt_pub_task</code> (priority 4, 4096-byte stack,
+  handed the queue as its <code>pvParameters</code>), then idles in a
+  <code>vTaskDelay(10s)</code> loop — the two tasks do all the real work.
+</p>
+
+<h3>7.2 UART receiver — <code>components/uart_receiver/uart_receiver.cpp</code> <span class="pill pill-bsw">BSW + MCAL</span></h3>
+<p>The heart of this component is a 7-state byte-at-a-time parser. This <b>is</b> a real state machine in the code (a C++ <code>enum</code> switched on per byte), not a metaphor:</p>
+<div class="diagram-card">
+<svg viewBox="0 0 980 380" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a6" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker>
+<marker id="a6r" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--accent-3)"/></marker></defs>
+<g>
+<circle cx="90" cy="80" r="55" class="diag-node"/><text x="90" y="76" class="diag-text-sm">SYNC1</text><text x="90" y="92" class="diag-text-sm">wait 0xAA</text>
+<circle cx="260" cy="80" r="55" class="diag-node"/><text x="260" y="76" class="diag-text-sm">SYNC2</text><text x="260" y="92" class="diag-text-sm">wait 0x55</text>
+<circle cx="430" cy="80" r="55" class="diag-node"/><text x="430" y="76" class="diag-text-sm">LEN_L</text><text x="430" y="92" class="diag-text-sm">length lo byte</text>
+<circle cx="600" cy="80" r="55" class="diag-node"/><text x="600" y="70" class="diag-text-sm">LEN_H</text><text x="600" y="86" class="diag-text-sm">length hi byte</text><text x="600" y="102" class="diag-text-sm">== sizeof(payload)?</text>
+<circle cx="770" cy="80" r="55" class="diag-node-2"/><text x="770" y="76" class="diag-text-sm">PAYLOAD</text><text x="770" y="92" class="diag-text-sm">11 bytes</text>
+<path d="M145,80 L205,80" class="diag-arrow" marker-end="url(#a6)"/>
+<path d="M315,80 L375,80" class="diag-arrow" marker-end="url(#a6)"/>
+<path d="M485,80 L545,80" class="diag-arrow" marker-end="url(#a6)"/>
+<path d="M655,80 L715,80" class="diag-arrow" marker-end="url(#a6)"/>
+<path d="M260,135 C 260,200 90,200 90,135" class="diag-arrow" stroke-dasharray="4 4" marker-end="url(#a6)"/>
+<text x="175" y="220" class="diag-label">byte != 0x55 → back to SYNC1</text>
+<path d="M600,135 C 600,240 90,240 90,135" class="diag-arrow-accent" stroke-dasharray="4 4" marker-end="url(#a6r)"/>
+<text x="345" y="260" class="diag-label" fill="var(--accent-3)">length mismatch → log warn, back to SYNC1</text>
+</g>
+<g>
+<circle cx="770" cy="280" r="55" class="diag-node"/><text x="770" y="276" class="diag-text-sm">CRC_L</text><text x="770" y="292" class="diag-text-sm">crc lo byte</text>
+<circle cx="600" cy="280" r="55" class="diag-node"/><text x="600" y="266" class="diag-text-sm">CRC_H</text><text x="600" y="282" class="diag-text-sm">crc hi byte,</text><text x="600" y="298" class="diag-text-sm">verify + ACK/NACK</text>
+<path d="M770,135 C 770,200 770,220 770,225" class="diag-arrow" marker-end="url(#a6)"/>
+<path d="M715,280 L655,280" class="diag-arrow" marker-end="url(#a6)"/>
+<path d="M545,280 C 300,280 90,220 90,135" class="diag-arrow" stroke-dasharray="4 4" marker-end="url(#a6)"/>
+<text x="330" y="330" class="diag-label">frame complete (either outcome) → back to SYNC1</text>
+</g>
+</svg>
+<div class="diagram-caption">Fig. 6 — <code>uart_receiver_task</code>'s frame parser state machine, drawn directly from the <code>switch(state)</code> in the source. Solid arrows: normal advance. Dashed: resync/reject paths.</div>
+</div>
+<table class="wrap-table">
+<tr><th>Function</th><th>What it does</th></tr>
+<tr><td><code>uart_receiver_init(queue)</code></td><td>Stores the output queue handle, configures UART1 (115200 8N1, no flow control) via <code>uart_driver_install</code>/<code>uart_param_config</code>/<code>uart_set_pin</code> (TXD=GPIO17, RXD=GPIO16).</td></tr>
+<tr><td><code>uart_receiver_task(void*)</code></td><td>Infinite loop: <code>uart_read_bytes()</code> with a 20-tick timeout, feed each byte through the state machine above. On <code>STATE_CRC_H</code>, recomputes <code>calculate_crc16()</code> over the received payload and compares to the received CRC.</td></tr>
+<tr><td><code>send_response(byte)</code> <i>(static)</i></td><td><code>uart_write_bytes()</code> of a single ACK (<code>0x06</code>) or NACK (<code>0x15</code>) byte back to the STM32.</td></tr>
+</table>
+<p>On CRC match: logs, ACKs, <code>xQueueSend(out_queue, &amp;payload_buf, portMAX_DELAY)</code>. On mismatch: logs the calculated vs. received CRC and NACKs — the STM32 side does not retry on NACK (see §6.1), so a corrupted frame is simply dropped.</p>
+
+<h3>7.3 Wi-Fi + MQTT client — <code>components/wifi_mqtt_client/wifi_mqtt_client.cpp</code> <span class="pill pill-bsw">BSW</span></h3>
+<table class="wrap-table">
+<tr><th>Function</th><th>What it does</th></tr>
+<tr><td><code>wifi_mqtt_init()</code></td><td>NVS init (erase+retry on version mismatch), <code>esp_netif_init</code>, default event loop, default Wi-Fi STA netif, <code>esp_wifi_init</code>, registers <code>wifi_event_handler</code> for <code>WIFI_EVENT</code>/<code>IP_EVENT</code>, builds <code>wifi_config_t</code> from Kconfig (<code>CONFIG_ESP_WIFI_SSID/PASSWORD</code>) or falls back to placeholder strings, starts Wi-Fi STA, then builds <code>esp_mqtt_client_config_t</code> pointing at <code>CONFIG_ESP_MQTT_BROKER_URI</code> or the public <code>mqtt://test.mosquitto.org</code> broker, and registers <code>mqtt_event_handler</code>.</td></tr>
+<tr><td><code>wifi_event_handler()</code> <i>(static)</i></td><td><code>WIFI_EVENT_STA_START</code>/<code>STA_DISCONNECTED</code> → <code>esp_wifi_connect()</code> (auto-reconnect); <code>IP_EVENT_STA_GOT_IP</code> → logs the IP and starts the MQTT client (deferred until the network is actually up).</td></tr>
+<tr><td><code>mqtt_event_handler()</code> <i>(static)</i></td><td>Logs CONNECTED/DISCONNECTED/ERROR — no reconnect logic needed here since esp-mqtt handles that internally.</td></tr>
+<tr><td><code>mqtt_publisher_task(void* pvParameters)</code></td><td><code>pvParameters</code> is the same queue <code>app_main</code> created. Blocks on <code>xQueueReceive(portMAX_DELAY)</code>, formats a compact JSON string via <code>snprintf</code>, publishes to topic <code>"telemetry/node_1"</code> at QoS 1 via <code>esp_mqtt_client_publish()</code>.</td></tr>
+</table>
+<div class="card">
+<b>Example published payload</b> (from the exact <code>snprintf</code> format string in <code>mqtt_publisher_task</code>):
+<pre><code>{"ts":123456,"batt_mv":3700,"temp":2431,"adc":1890,"status":1}</code></pre>
+</div>
+</section>
+
+<section id="protocol">
+<h2>8. Wire Protocol &amp; CRC16</h2>
+<p>Defined once in <code>common/protocol_spec.h</code>, compiled into both firmwares so the struct layout can never drift between them (both sides use <code>#pragma pack(push, 1)</code>).</p>
+<div class="diagram-card">
+<svg viewBox="0 0 980 170" xmlns="http://www.w3.org/2000/svg">
+<g font-family="ui-monospace,monospace">
+<rect x="10" y="30" width="60" height="50" class="diag-node"/><text x="40" y="60" class="diag-text-sm">SYNC1</text>
+<rect x="70" y="30" width="60" height="50" class="diag-node"/><text x="100" y="60" class="diag-text-sm">SYNC2</text>
+<rect x="130" y="30" width="90" height="50" class="diag-node-2"/><text x="175" y="60" class="diag-text-sm">LENGTH</text>
+<rect x="220" y="30" width="620" height="50" class="diag-node-3"/><text x="530" y="60" class="diag-text-sm">telemetry_payload_t (11 bytes)</text>
+<rect x="840" y="30" width="90" height="50" class="diag-node-2"/><text x="885" y="60" class="diag-text-sm">CRC16</text>
+<text x="40" y="98" class="diag-label">0xAA</text>
+<text x="100" y="98" class="diag-label">0x55</text>
+<text x="175" y="98" class="diag-label">uint16, LE = 11</text>
+<text x="530" y="98" class="diag-label">timestamp_ms(4) · battery_mv(2) · temp_sensor(2) · adc_ch1(2) · status_flags(1)</text>
+<text x="885" y="98" class="diag-label">CCITT-FALSE over payload</text>
+<text x="40" y="118" class="diag-label">1B</text><text x="100" y="118" class="diag-label">1B</text><text x="175" y="118" class="diag-label">2B</text><text x="530" y="118" class="diag-label">11B</text><text x="885" y="118" class="diag-label">2B</text>
+</g>
+<text x="490" y="150" class="diag-label">Total frame: 17 bytes, packed (#pragma pack(push, 1)) — identical layout on both MCUs</text>
+</svg>
+<div class="diagram-caption">Fig. 7 — <code>uart_frame_t</code> byte layout, exactly as declared in <code>protocol_spec.h</code>.</div>
+</div>
+<h3>8.1 Handshake bytes</h3>
+<table>
+<tr><th>Constant</th><th>Value</th><th>Meaning</th></tr>
+<tr><td><code>PROTOCOL_SYNC_BYTE_1</code></td><td><code>0xAA</code></td><td>Frame start marker 1</td></tr>
+<tr><td><code>PROTOCOL_SYNC_BYTE_2</code></td><td><code>0x55</code></td><td>Frame start marker 2</td></tr>
+<tr><td><code>PROTOCOL_ACK_BYTE</code></td><td><code>0x06</code></td><td>ESP32 → STM32: frame accepted</td></tr>
+<tr><td><code>PROTOCOL_NACK_BYTE</code></td><td><code>0x15</code></td><td>ESP32 → STM32: CRC mismatch</td></tr>
+</table>
+<h3>8.2 CRC16 (CCITT-FALSE)</h3>
+<p>
+  <code>calculate_crc16()</code> is a <code>static inline</code> function in the shared
+  header — same object code semantics compiled independently into both firmwares.
+  Polynomial <code>0x1021</code>, initial value <code>0xFFFF</code>, MSB-first,
+  no final XOR:
+</p>
+<pre><code>uint16_t crc = 0xFFFF;
+for each byte b:
+    crc ^= (uint16_t)b &lt;&lt; 8;
+    repeat 8 times:
+        crc = (crc &amp; 0x8000) ? (crc &lt;&lt; 1) ^ 0x1021 : (crc &lt;&lt; 1);
+return crc;</code></pre>
+</section>
+
+<section id="timing">
+<h2>9. Full-Cycle Timing Diagram</h2>
+<div class="diagram-card">
+<svg viewBox="0 0 980 460" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a7" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker></defs>
+<text x="150" y="24" class="diag-text-sm">STM32</text>
+<line x1="150" y1="34" x2="150" y2="440" stroke="var(--border)" stroke-width="2"/>
+<text x="700" y="24" class="diag-text-sm">ESP32</text>
+<line x1="700" y1="34" x2="700" y2="440" stroke="var(--border)" stroke-width="2"/>
+
+<rect x="60" y="46" width="180" height="60" rx="8" class="diag-node"/>
+<text x="150" y="70" class="diag-text-sm">STOP2 sleep</text>
+<text x="150" y="86" class="diag-text-sm">ADC+DMA free-run</text>
+
+<rect x="610" y="46" width="180" height="60" rx="8" class="diag-node-2"/>
+<text x="700" y="70" class="diag-text-sm">light idle</text>
+<text x="700" y="86" class="diag-text-sm">uart_read_bytes() poll</text>
+
+<path d="M150,106 L150,140" class="diag-arrow" marker-end="url(#a7)"/>
+<text x="260" y="130" class="diag-label">DMA transfer-complete IRQ</text>
+<rect x="60" y="140" width="180" height="34" rx="6" class="diag-node-3"/>
+<text x="150" y="162" class="diag-text-sm">wake, average 3ch</text>
+
+<path d="M150,174 L150,206" class="diag-arrow" marker-end="url(#a7)"/>
+<rect x="60" y="206" width="180" height="34" rx="6" class="diag-node-3"/>
+<text x="150" y="228" class="diag-text-sm">WAKE pulse (10ms)</text>
+<path d="M240,223 C 400,223 500,223 610,180" class="diag-arrow-accent" marker-end="url(#a7)" stroke-dasharray="3 3"/>
+<text x="430" y="210" class="diag-label">GPIO wake line (out of band)</text>
+
+<path d="M150,240 L150,266" class="diag-arrow" marker-end="url(#a7)"/>
+<rect x="60" y="266" width="180" height="30" rx="6" class="diag-node"/>
+<text x="150" y="286" class="diag-text-sm">settle delay (100ms)</text>
+
+<path d="M150,296 L150,320" class="diag-arrow" marker-end="url(#a7)"/>
+<rect x="30" y="320" width="240" height="34" rx="6" class="diag-node-2"/>
+<text x="150" y="342" class="diag-text-sm">TX 17-byte frame (USART2)</text>
+<path d="M270,335 L610,205" class="diag-arrow-accent" marker-end="url(#a7)"/>
+
+<rect x="610" y="180" width="180" height="60" rx="8" class="diag-node-2"/>
+<text x="700" y="202" class="diag-text-sm">parse state machine</text>
+<text x="700" y="218" class="diag-text-sm">(Fig. 6)</text>
+<text x="700" y="234" class="diag-text-sm">verify CRC16</text>
+
+<rect x="610" y="256" width="180" height="34" rx="6" class="diag-node-3"/>
+<text x="700" y="278" class="diag-text-sm">send ACK / NACK</text>
+<path d="M610,270 L270,354" class="diag-arrow" marker-end="url(#a7)"/>
+
+<path d="M150,354 L150,384" class="diag-arrow" marker-end="url(#a7)"/>
+<rect x="60" y="384" width="180" height="40" rx="8" class="diag-node"/>
+<text x="150" y="408" class="diag-text-sm">back to STOP2</text>
+
+<path d="M700,290 L700,320" class="diag-arrow" marker-end="url(#a7)"/>
+<rect x="610" y="320" width="180" height="34" rx="6" class="diag-node-2"/>
+<text x="700" y="342" class="diag-text-sm">xQueueSend()</text>
+<path d="M700,354 L700,384" class="diag-arrow" marker-end="url(#a7)"/>
+<rect x="610" y="384" width="180" height="40" rx="8" class="diag-node-3"/>
+<text x="700" y="404" class="diag-text-sm">JSON → MQTT publish</text>
+</svg>
+<div class="diagram-caption">Fig. 8 — One full acquisition→publish cycle. Solid vertical arrows are sequencing within one MCU; diagonal dashed/accent arrows cross the UART/GPIO link between chips.</div>
+</div>
+<p class="note">
+  Timing values (10ms wake pulse, 100ms settle, 100000-iteration ACK timeout) are the
+  literal constants in <code>uart_handshake.c</code>. The ACK timeout is a loop-iteration
+  count, not a calibrated millisecond value — its real duration depends on CPU clock
+  speed, so it's approximate by design (see the comment in <code>uart_wait_for_byte()</code>).
+</p>
+</section>
+
+<section id="call-flow">
+<h2>10. Cross-Layer Function Call Flow</h2>
+<p>Compressed call graphs, App → BSW → MCAL, in the order each function is actually invoked:</p>
+<div class="grid2">
+<div class="card">
+<h4>STM32</h4>
+<pre><code>main()
+├─ pm_init()                              [MCAL]
+├─ pm_configure_unused_gpios_analog()     [MCAL]
+├─ pm_disable_unused_clocks()             [MCAL]
+├─ systick_delay_init()                   [MCAL]
+├─ uart_handshake_init()                  [BSW]
+├─ dma_adc_init()                         [MCAL]
+├─ dma_adc_start()                        [MCAL]
+└─ loop:
+   ├─ dma_adc_is_data_ready()             [MCAL]
+   ├─ dma_adc_get_averaged_channel() x3   [MCAL]
+   ├─ dma_adc_clear_data_ready()          [MCAL]
+   ├─ uart_wake_esp32()                   [BSW]
+   │  └─ delay_ms()                       [MCAL]
+   ├─ uart_send_telemetry_and_wait_ack()  [BSW]
+   │  ├─ calculate_crc16()                [shared]
+   │  ├─ uart_send_buffer()      (static)
+   │  └─ uart_wait_for_byte()    (static)
+   └─ pm_enter_stop_mode()                [MCAL]
+
+DMA1_Channel1_IRQHandler()                [MCAL, async]
+└─ sets data_ready_flag (read by loop above)</code></pre>
+</div>
+<div class="card">
+<h4>ESP32</h4>
+<pre><code>app_main()
+├─ xQueueCreate()
+├─ uart_receiver_init(queue)              [BSW/MCAL]
+├─ wifi_mqtt_init()                       [BSW]
+├─ xTaskCreate(uart_receiver_task)  ──┐
+└─ xTaskCreate(mqtt_publisher_task) ──┤
+                                       │
+uart_receiver_task()  (own task)  &lt;───┘
+├─ uart_read_bytes()                      [MCAL]
+├─ switch(state): 7-state parser (Fig. 6)
+├─ calculate_crc16()                      [shared]
+├─ send_response()          (static)
+└─ xQueueSend()  ─────────────────────────┐
+                                            │
+mqtt_publisher_task() (own task)  &lt;────────┘
+├─ xQueueReceive()
+├─ snprintf()  (format JSON)
+└─ esp_mqtt_client_publish()              [MCAL]
+
+wifi_event_handler() / mqtt_event_handler()  [async, event-driven]</code></pre>
+</div>
+</div>
+</section>
+
+<section id="build">
+<h2>11. Build System &amp; Verified Compilation</h2>
+<p>
+  Both trees were built end-to-end with real cross-toolchains as part of documenting
+  this project — not just read and described. Results:
+</p>
+<div class="grid2">
+<div class="card">
+<h4>STM32 — arm-none-eabi-gcc 15.2.1</h4>
+<pre><code>$ cmake -S stm32_firmware -B stm32_firmware/build
+$ cmake --build stm32_firmware/build
+
+[100%] Linking C executable main.elf
+   text    data     bss     dec     hex filename
+   2224      12    1156    3392     d40 main.elf
+[100%] Built target main.elf</code></pre>
+<p>Target: <b>STM32L476RG</b>, Cortex-M4F. Output: <code>main.elf</code>/<code>.hex</code>/<code>.bin</code>, ~3.4KB combined flash+RAM footprint.</p>
+</div>
+<div class="card">
+<h4>ESP32 — ESP-IDF v6.0.2</h4>
+<pre><code>$ source $IDF_PATH/export.sh
+$ cd esp32_firmware &amp;&amp; idf.py build
+
+[97/97] Project build complete.
+esp32_telemetry_node.bin binary size 0xde3a0 bytes.
+Smallest app partition is 0x100000 bytes.
+0x21c60 bytes (13%) free.</code></pre>
+<p>Target: <b>esp32</b> (ESP-WROOM-32). Output: bootloader + partition table + app binary, 13% flash headroom in the default 1MB app partition.</p>
+</div>
+</div>
+<p class="note">
+  Neither build was run on real hardware in this environment (no physical board attached) —
+  verification stops at a real, successful cross-compile and link. "Run" in the fullest
+  sense would require flashing both boards and observing the UART link live.
+</p>
+</section>
+
+<section id="history">
+<h2>12. Engineering Notes: Bugs Found &amp; Fixed</h2>
+<p>This tree started as a design skeleton with register operations written as comments rather than code. Getting it to actually compile surfaced a number of real, concrete bugs — recorded here since they're the kind of thing worth knowing before extending this codebase.</p>
+<details>
+<summary>Both <code>CMakeLists.txt</code> files had duplicate, conflicting <code>project()</code>/<code>add_executable()</code> blocks</summary>
+<p>Both <code>stm32_firmware/CMakeLists.txt</code> and <code>esp32_firmware/CMakeLists.txt</code> contained an early legacy placeholder block (<code>project(..._firmware)</code> + <code>add_executable(..._firmware main.c ...)</code>) concatenated <i>before</i> the real build configuration. For STM32 this was a hard CMake error (duplicate target name). For ESP32 it was worse: the stray first <code>project()</code> call locked CMake's compiler detection onto the host's AppleClang <i>before</i> ESP-IDF's <code>include($ENV{IDF_PATH}/tools/cmake/project.cmake)</code> ever got a chance to set the xtensa cross-toolchain — producing a confusing downstream error deep in <code>xtensa/project_include.cmake</code> ("toolchain has not been set correctly") that looks unrelated to the actual root cause. Both files were rewritten to contain exactly one clean build definition.</p>
+</details>
+<details>
+<summary>STM32 driver/middleware/app files were pseudocode, not code</summary>
+<p><code>dma_adc.c</code>, <code>power_manager.c</code>, <code>uart_handshake.c</code>, and <code>main.c</code> had function bodies consisting entirely of comments describing what register writes <i>would</i> happen ("// RCC-&gt;AHB2ENR |= ..."), with no actual code. Rewrote all four with real CMSIS register access against the real STM32L476 device header, plus added a linker script, startup file, SysTick delay driver, and pin-mapping header — none of which existed. See §6.</p>
+</details>
+<details>
+<summary>ESP-IDF v6 moved the <code>mqtt</code> component to the Component Registry</summary>
+<p>Core esp-idf no longer bundles the MQTT client — declaring <code>REQUIRES mqtt</code> now fails with "Failed to resolve component 'mqtt'". The fix is an <code>idf_component.yml</code> manifest pulling <code>espressif/mqtt</code> from the registry (not <code>espressif/esp-mqtt</code>, which doesn't exist — confirmed by hand against the registry API).</p>
+</details>
+<details>
+<summary>ESP-IDF v6 split the monolithic <code>driver</code> component</summary>
+<p><code>uart_receiver</code>'s <code>CMakeLists.txt</code> declared <code>REQUIRES driver</code>, which no longer transitively provides <code>driver/uart.h</code>/<code>driver/gpio.h</code>. Fixed by requiring <code>esp_driver_uart</code> and <code>esp_driver_gpio</code> directly, per the exact error message the real build produced.</p>
+</details>
+<details>
+<summary><code>-Werror=missing-field-initializers</code> on partial designated initializers (C++ mode)</summary>
+<p><code>uart_config_t</code>, <code>wifi_config_t</code>, and <code>esp_mqtt_client_config_t</code> were initialized with partial designated initializers (e.g. <code>{ .baud_rate = 115200, ... }</code>), which is valid C and normally just a style warning — but GCC15 in this C++ build escalates it to a hard error, and newer ESP-IDF struct versions add fields (like <code>uart_config_t::flags</code>) that didn't exist when this code was originally written. Fixed by zero-initializing each struct with <code>= {}</code> first, then assigning the needed fields individually.</p>
+</details>
+<details>
+<summary>Implicit <code>int</code>→enum conversion (C vs. C++ semantics)</summary>
+<p><code>ESP_EVENT_ANY_ID</code> is <code>#define ESP_EVENT_ANY_ID -1</code> (a plain <code>int</code>). C freely converts that to <code>esp_mqtt_event_id_t</code>; C++ does not. Since <code>wifi_mqtt_client.cpp</code> is compiled as C++, this needed an explicit <code>static_cast&lt;esp_mqtt_event_id_t&gt;(...)</code>.</p>
+</details>
+<details>
+<summary>7 duplicate legacy files caused a "two <code>main()</code> functions" situation</summary>
+<p><code>stm32_firmware/main.c</code>, <code>dma_adc.{c,h}</code>, <code>power_manager.{c,h}</code>, and <code>uart_handshake.{c,h}</code> lived flat at the <code>stm32_firmware/</code> root — an earlier, simpler, still-broken skeleton, never referenced by <code>CMakeLists.txt</code>'s <code>GLOB_RECURSE</code> (which only globs <code>app/src</code>, <code>drivers/src</code>, <code>middleware/src</code>). They weren't a build error, but they were confusing dead weight — deleted outright rather than left as clutter.</p>
+</details>
+</section>
+
+<section id="docs">
+<h2>13. Project Docs Index</h2>
+<table>
+<tr><th>Document</th><th>Covers</th></tr>
+<tr><td><a href="README.md">README.md</a></td><td>Project intro, repository structure overview.</td></tr>
+<tr><td><a href="ARCHITECTURE.md">ARCHITECTURE.md</a></td><td>Hardware overview, system block diagram, the 4-state architecture flow this page's §5 is cross-checked against, layered design rationale.</td></tr>
+<tr><td><a href="docs/SOFTWARE_DESIGN.md">docs/SOFTWARE_DESIGN.md</a></td><td>Original software design notes: data flow, STM32 init/loop design, ESP32 FreeRTOS task design, extensibility notes.</td></tr>
+<tr><td><a href="docs/3_Architecture.md">docs/3_Architecture.md</a></td><td>Additional architecture planning notes.</td></tr>
+<tr><td><a href="docs/1_implementation_plan.md">docs/1_implementation_plan.md</a></td><td>Original implementation task breakdown.</td></tr>
+<tr><td><a href="docs/2_Steps.md">docs/2_Steps.md</a></td><td>Phase-by-phase build plan (protocol layer → power management → ADC/DMA → handshake → MQTT).</td></tr>
+</table>
+</section>
+
+<section id="glossary">
+<h2>14. Glossary</h2>
+<table>
+<tr><th>Term</th><th>Meaning in this project</th></tr>
+<tr><td>MCAL</td><td>Microcontroller Abstraction Layer — direct register/peripheral access (<code>drivers/</code>).</td></tr>
+<tr><td>BSW</td><td>Basic Software / Service layer — protocol, framing, connectivity logic above MCAL (<code>middleware/</code> and ESP32 <code>components/</code>).</td></tr>
+<tr><td>DMA circular buffer</td><td>A fixed-size SRAM buffer the DMA controller keeps rewriting from the start once it reaches the end, with zero CPU intervention (<code>DMA_CCR_CIRC</code>).</td></tr>
+<tr><td>STOP2</td><td>STM32L4's deepest RAM-retention low-power mode: core and most clocks off, SRAM and register state preserved, sub-&micro;A class current draw.</td></tr>
+<tr><td>CRC16 (CCITT-FALSE)</td><td>16-bit cyclic redundancy check, polynomial <code>0x1021</code>, init <code>0xFFFF</code>, used to detect corrupted UART frames.</td></tr>
+<tr><td>FreeRTOS queue</td><td>Thread-safe fixed-capacity ring buffer used here to hand <code>telemetry_payload_t</code> structs from <code>uart_receiver_task</code> to <code>mqtt_publisher_task</code>.</td></tr>
+<tr><td>ESP-IDF component</td><td>ESP-IDF's unit of modular code (its own <code>CMakeLists.txt</code> + <code>REQUIRES</code>/<code>PRIV_REQUIRES</code> list) — <code>uart_receiver</code> and <code>wifi_mqtt_client</code> are each one.</td></tr>
+<tr><td>CMSIS</td><td>ARM's Cortex Microcontroller Software Interface Standard — the vendor-neutral core headers (<code>core_cm4.h</code> etc.) plus ST's device-specific register header (<code>stm32l476xx.h</code>) this project's STM32 build depends on.</td></tr>
+</table>
+</section>
+
+</div>
+
+<footer>
+<div class="wrap">
+  Generated documentation for <b>Ultra-Low-Power Dual-MCU IoT Telemetry Node</b>.
+  Board photos: Nucleo-64 by Avandalen (CC BY-SA 4.0), ESP32 DevKit by Ubahnverleih (CC0), both via Wikimedia Commons.
+  All diagrams are inline SVG, no external script dependencies.
+</div>
+</footer>
+
+</body>
+</html>
