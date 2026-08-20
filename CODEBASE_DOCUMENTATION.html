@@ -176,7 +176,7 @@ footer{border-top:1px solid var(--border); padding:32px 24px; color:var(--fg-mut
   <li><a href="#esp32-deep-dive">7. ESP32 Firmware Deep Dive</a></li>
   <li><a href="#protocol">8. Wire Protocol &amp; CRC16</a></li>
   <li><a href="#timing">9. Full-Cycle Timing Diagram</a></li>
-  <li><a href="#call-flow">10. Cross-Layer Function Call Flow</a></li>
+  <li><a href="#call-flow">10. Sequence Diagrams: Layer Calls &amp; STM32↔ESP32 Comms</a></li>
   <li><a href="#build">11. Build System &amp; Verified Compilation</a></li>
   <li><a href="#history">12. Engineering Notes: Bugs Found &amp; Fixed</a></li>
   <li><a href="#docs">13. Project Docs Index</a></li>
@@ -698,8 +698,158 @@ return crc;</code></pre>
 </section>
 
 <section id="call-flow">
-<h2>10. Cross-Layer Function Call Flow</h2>
-<p>Compressed call graphs, App → BSW → MCAL, in the order each function is actually invoked:</p>
+<h2>10. Sequence Diagrams: Layer Calls &amp; STM32↔ESP32 Comms</h2>
+
+<h3>10.1 STM32 — cross-layer call sequence</h3>
+<p>Every call <code>main()</code> makes, top to bottom, App → BSW → MCAL, exactly as ordered in the source:</p>
+<div class="diagram-card">
+<svg viewBox="0 0 900 640" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a8" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker>
+<marker id="a8r" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--accent-3)"/></marker></defs>
+<g font-family="ui-monospace,monospace">
+<rect x="15" y="8" width="150" height="34" rx="6" class="diag-node-3"/><text x="90" y="30" class="diag-text-sm">main (App)</text>
+<rect x="185" y="8" width="150" height="34" rx="6" class="diag-node"/><text x="260" y="30" class="diag-text-sm">power_manager</text>
+<rect x="355" y="8" width="150" height="34" rx="6" class="diag-node"/><text x="430" y="30" class="diag-text-sm">systick_delay</text>
+<rect x="535" y="8" width="150" height="34" rx="6" class="diag-node-2"/><text x="610" y="30" class="diag-text-sm">uart_handshake</text>
+<rect x="715" y="8" width="150" height="34" rx="6" class="diag-node"/><text x="790" y="30" class="diag-text-sm">dma_adc</text>
+<line x1="90" y1="42" x2="90" y2="622" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="260" y1="42" x2="260" y2="622" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="430" y1="42" x2="430" y2="622" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="610" y1="42" x2="610" y2="622" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="790" y1="42" x2="790" y2="622" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<g font-family="ui-monospace,monospace" font-size="10.5">
+<path d="M90,68 L260,68" class="diag-arrow" marker-end="url(#a8)"/><text x="175" y="62" class="diag-label">pm_init()</text>
+<path d="M90,92 L260,92" class="diag-arrow" marker-end="url(#a8)"/><text x="175" y="86" class="diag-label">pm_configure_unused_gpios_analog()</text>
+<path d="M90,116 L260,116" class="diag-arrow" marker-end="url(#a8)"/><text x="175" y="110" class="diag-label">pm_disable_unused_clocks()</text>
+<path d="M90,140 L430,140" class="diag-arrow" marker-end="url(#a8)"/><text x="260" y="134" class="diag-label">systick_delay_init()</text>
+<path d="M90,164 L610,164" class="diag-arrow" marker-end="url(#a8)"/><text x="350" y="158" class="diag-label">uart_handshake_init()</text>
+<path d="M90,188 L790,188" class="diag-arrow" marker-end="url(#a8)"/><text x="440" y="182" class="diag-label">dma_adc_init()</text>
+<path d="M90,212 L790,212" class="diag-arrow" marker-end="url(#a8)"/><text x="440" y="206" class="diag-label">dma_adc_start() — ADC+DMA free-run</text>
+
+<line x1="20" y1="232" x2="870" y2="232" stroke="var(--border)" stroke-dasharray="6 3"/>
+<text x="445" y="228" class="diag-label"><tspan font-weight="700">while (1)</tspan> — main loop, repeats every wake cycle</text>
+
+<path d="M90,256 L790,256" class="diag-arrow" marker-end="url(#a8)"/><text x="440" y="250" class="diag-label">dma_adc_is_data_ready()</text>
+<path d="M790,274 L90,274" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a8)"/><text x="440" y="270" class="diag-label" font-style="italic">return: uint8_t (bool)</text>
+
+<path d="M90,298 L790,298" class="diag-arrow" marker-end="url(#a8)"/><text x="440" y="292" class="diag-label">dma_adc_get_averaged_channel(ch) × 3</text>
+<path d="M790,316 L90,316" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a8)"/><text x="440" y="312" class="diag-label" font-style="italic">return: uint16_t × 3</text>
+
+<path d="M90,340 L790,340" class="diag-arrow" marker-end="url(#a8)"/><text x="440" y="334" class="diag-label">dma_adc_clear_data_ready()</text>
+
+<path d="M90,364 L610,364" class="diag-arrow" marker-end="url(#a8)"/><text x="350" y="358" class="diag-label">uart_wake_esp32()</text>
+<path d="M610,382 L430,382" class="diag-arrow" marker-end="url(#a8)"/><text x="520" y="378" class="diag-label" font-size="9.5">delay_ms(10)</text>
+<path d="M610,400 L430,400" class="diag-arrow" marker-end="url(#a8)"/><text x="520" y="396" class="diag-label" font-size="9.5">delay_ms(100)</text>
+
+<path d="M90,424 L610,424" class="diag-arrow" marker-end="url(#a8)"/><text x="350" y="418" class="diag-label">uart_send_telemetry_and_wait_ack()</text>
+<path d="M610,442 C 660,442 660,458 610,458" class="diag-arrow" marker-end="url(#a8)"/><text x="668" y="454" class="diag-label" font-size="9.5" text-anchor="start">calculate_crc16()</text>
+<path d="M610,480 L90,480" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a8)"/><text x="350" y="476" class="diag-label" font-style="italic">return: bool ack_received</text>
+
+<path d="M90,504 L260,504" class="diag-arrow" marker-end="url(#a8)"/><text x="175" y="498" class="diag-label">pm_enter_stop_mode() — __WFI()</text>
+
+<line x1="20" y1="524" x2="870" y2="524" stroke="var(--border)" stroke-dasharray="6 3"/>
+<text x="445" y="520" class="diag-label">CPU halted until an enabled interrupt fires</text>
+
+<path d="M870,548 L790,548" class="diag-arrow-accent" marker-end="url(#a8r)"/><text x="800" y="544" class="diag-label" fill="var(--accent-3)" text-anchor="end">DMA1_Channel1_IRQHandler() — async ISR</text>
+<path d="M790,566 L90,566" class="diag-arrow-accent" stroke-dasharray="4 3" marker-end="url(#a8r)"/><text x="440" y="562" class="diag-label" fill="var(--accent-3)">sets data_ready_flag=1 → CPU resumes → loop restarts</text>
+</g>
+</svg>
+<div class="diagram-caption">Fig. 9 — STM32 cross-layer sequence diagram. Solid arrows: calls. Dashed: returns. Orange: asynchronous ISR path (the only wakeup source from STOP2).</div>
+</div>
+
+<h3>10.2 ESP32 — cross-layer call sequence</h3>
+<p><code>app_main()</code> does setup, then hands off to two independent FreeRTOS tasks connected by a queue:</p>
+<div class="diagram-card">
+<svg viewBox="0 0 900 480" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a9" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker></defs>
+<g font-family="ui-monospace,monospace">
+<rect x="15" y="8" width="160" height="34" rx="6" class="diag-node-3"/><text x="95" y="30" class="diag-text-sm">app_main (App)</text>
+<rect x="215" y="8" width="180" height="34" rx="6" class="diag-node-2"/><text x="305" y="30" class="diag-text-sm">uart_receiver_task</text>
+<rect x="435" y="8" width="150" height="34" rx="6" class="diag-node"/><text x="510" y="30" class="diag-text-sm">FreeRTOS Queue</text>
+<rect x="625" y="8" width="200" height="34" rx="6" class="diag-node-2"/><text x="725" y="30" class="diag-text-sm">mqtt_publisher_task</text>
+<line x1="95" y1="42" x2="95" y2="462" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="305" y1="42" x2="305" y2="462" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="510" y1="42" x2="510" y2="462" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="725" y1="42" x2="725" y2="462" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<g font-family="ui-monospace,monospace" font-size="10.5">
+<path d="M95,68 L510,68" class="diag-arrow" marker-end="url(#a9)"/><text x="300" y="62" class="diag-label">xQueueCreate(10, sizeof(telemetry_payload_t))</text>
+<path d="M95,96 L305,96" class="diag-arrow" marker-end="url(#a9)"/><text x="200" y="90" class="diag-label">uart_receiver_init(queue)</text>
+<path d="M95,120 L725,120" class="diag-arrow" marker-end="url(#a9)"/><text x="410" y="114" class="diag-label">wifi_mqtt_init()</text>
+<path d="M95,148 L305,148" class="diag-arrow" marker-end="url(#a9)"/><text x="200" y="142" class="diag-label">xTaskCreate(uart_receiver_task, prio 5)</text>
+<path d="M95,172 L725,172" class="diag-arrow" marker-end="url(#a9)"/><text x="410" y="166" class="diag-label">xTaskCreate(mqtt_publisher_task, prio 4, arg=queue)</text>
+
+<line x1="20" y1="196" x2="870" y2="196" stroke="var(--border)" stroke-dasharray="6 3"/>
+<text x="445" y="192" class="diag-label"><tspan font-weight="700">tasks now run concurrently</tspan> under FreeRTOS scheduling</text>
+
+<path d="M305,220 C 355,220 355,236 305,236" class="diag-arrow" marker-end="url(#a9)"/><text x="365" y="232" class="diag-label" text-anchor="start" font-size="9.5">uart_read_bytes() + parse loop (Fig. 6)</text>
+<path d="M305,258 L510,258" class="diag-arrow" marker-end="url(#a9)"/><text x="410" y="252" class="diag-label">xQueueSend(&amp;payload_buf, portMAX_DELAY)</text>
+
+<path d="M725,290 L510,290" class="diag-arrow" marker-end="url(#a9)"/><text x="620" y="284" class="diag-label">xQueueReceive(&amp;data, portMAX_DELAY)</text>
+<path d="M510,308 L725,308" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a9)"/><text x="620" y="304" class="diag-label" font-style="italic">unblocks with queued payload</text>
+<path d="M725,332 C 775,332 775,348 725,348" class="diag-arrow" marker-end="url(#a9)"/><text x="785" y="344" class="diag-label" text-anchor="start" font-size="9.5">snprintf() → JSON</text>
+<path d="M725,368 C 775,368 775,384 725,384" class="diag-arrow" marker-end="url(#a9)"/><text x="785" y="380" class="diag-label" text-anchor="start" font-size="9.5">esp_mqtt_client_publish()</text>
+
+<line x1="20" y1="410" x2="870" y2="410" stroke="var(--border)" stroke-dasharray="6 3"/>
+<text x="445" y="406" class="diag-label">both tasks loop back and block again (uart_read_bytes / xQueueReceive)</text>
+</g>
+</svg>
+<div class="diagram-caption">Fig. 10 — ESP32 cross-layer sequence diagram. Setup (App) hands off to two concurrent tasks (BSW) joined by one queue.</div>
+</div>
+
+<h3>10.3 STM32 ↔ ESP32 — cross-MCU communication sequence</h3>
+<p>The only channel between the two chips is the UART wire plus one GPIO wake line. This is the message exchange that actually crosses the physical boundary:</p>
+<div class="diagram-card">
+<svg viewBox="0 0 980 540" xmlns="http://www.w3.org/2000/svg">
+<defs><marker id="a10" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--fg-muted)"/></marker>
+<marker id="a10x" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0,0 L8,3 L0,6 Z" fill="var(--accent)"/></marker></defs>
+<g font-family="ui-monospace,monospace">
+<rect x="15" y="8" width="150" height="34" rx="6" class="diag-node-3"/><text x="90" y="30" class="diag-text-sm">STM32: main</text>
+<rect x="195" y="8" width="170" height="34" rx="6" class="diag-node-2"/><text x="280" y="30" class="diag-text-sm">STM32: uart_handshake</text>
+<rect x="465" y="8" width="200" height="34" rx="6" class="diag-node-2"/><text x="565" y="30" class="diag-text-sm">ESP32: uart_receiver_task</text>
+<rect x="695" y="8" width="120" height="34" rx="6" class="diag-node"/><text x="755" y="30" class="diag-text-sm">Queue</text>
+<rect x="845" y="8" width="130" height="34" rx="6" class="diag-node-2"/><text x="910" y="30" class="diag-text-sm">mqtt_task</text>
+<line x1="90" y1="42" x2="90" y2="520" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="280" y1="42" x2="280" y2="520" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="565" y1="42" x2="565" y2="520" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="755" y1="42" x2="755" y2="520" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+<line x1="910" y1="42" x2="910" y2="520" stroke="var(--border)" stroke-width="1.5" stroke-dasharray="3 3"/>
+</g>
+<g font-family="ui-monospace,monospace" font-size="10.5">
+<path d="M90,66 L280,66" class="diag-arrow" marker-end="url(#a10)"/><text x="185" y="60" class="diag-label">uart_wake_esp32()</text>
+<path d="M280,90 L565,90" class="diag-arrow-accent" marker-end="url(#a10x)"/><text x="420" y="84" class="diag-label" fill="var(--accent)">GPIO WAKE pulse (10ms, PA0 → ESP32 wake pin)</text>
+<text x="420" y="104" class="diag-label">— 100ms settle delay for ESP32 to boot its UART —</text>
+
+<path d="M90,132 L280,132" class="diag-arrow" marker-end="url(#a10)"/><text x="185" y="126" class="diag-label">uart_send_telemetry_and_wait_ack()</text>
+<path d="M280,156 L565,156" class="diag-arrow-accent" marker-end="url(#a10x)"/><text x="420" y="150" class="diag-label" fill="var(--accent)">UART frame, 17B: SYNC1·SYNC2·LEN·payload(11B)·CRC16</text>
+
+<path d="M565,180 C 615,180 615,196 565,196" class="diag-arrow" marker-end="url(#a10)"/><text x="625" y="192" class="diag-label" text-anchor="start" font-size="9.5">parse state machine (Fig. 6) + calculate_crc16()</text>
+
+<rect x="500" y="216" width="130" height="30" rx="15" class="diag-node"/><text x="565" y="235" class="diag-text-sm">CRC ok?</text>
+
+<path d="M565,246 L565,266" class="diag-arrow" marker-end="url(#a10)"/>
+<text x="600" y="262" class="diag-label" text-anchor="start">yes</text>
+<path d="M565,266 L755,266" class="diag-arrow" marker-end="url(#a10)"/><text x="660" y="260" class="diag-label">xQueueSend(payload, portMAX_DELAY)</text>
+<path d="M565,290 L280,290" class="diag-arrow-accent" marker-end="url(#a10x)"/><text x="420" y="284" class="diag-label" fill="var(--accent)">ACK (0x06) over UART</text>
+
+<path d="M420,220 L280,340" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a10)"/>
+<text x="330" y="330" class="diag-label">no</text>
+<path d="M565,340 L280,340" class="diag-arrow-accent" marker-end="url(#a10x)" stroke-dasharray="4 3"/><text x="420" y="334" class="diag-label" fill="var(--accent-3)">NACK (0x15) over UART — frame dropped, no retry</text>
+
+<path d="M280,364 L90,364" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a10)"/><text x="185" y="360" class="diag-label" font-style="italic">return: bool ack_received</text>
+<path d="M90,388 L90,388" class="diag-arrow"/><text x="185" y="384" class="diag-label">pm_enter_stop_mode() — STM32 sleeps regardless of ACK/NACK</text>
+
+<path d="M910,414 L755,414" class="diag-arrow" marker-end="url(#a10)"/><text x="830" y="408" class="diag-label">xQueueReceive(portMAX_DELAY)</text>
+<path d="M755,432 L910,432" class="diag-arrow" stroke-dasharray="4 3" marker-end="url(#a10)"/><text x="830" y="428" class="diag-label" font-style="italic">unblocks with payload</text>
+<path d="M910,456 C 960,456 960,472 910,472" class="diag-arrow" marker-end="url(#a10)"/><text x="920" y="490" class="diag-label" text-anchor="middle" font-size="9.5">JSON → esp_mqtt_client_publish() → broker</text>
+</g>
+</svg>
+<div class="diagram-caption">Fig. 11 — STM32↔ESP32 physical-link sequence diagram. Blue arrows are the only messages that actually cross the UART/GPIO wire; everything else is a same-chip function call. On NACK, the STM32 does not retry — see §6.1.</div>
+</div>
+
+<h3>10.4 Condensed call trees (text form)</h3>
+<p>The same call order as Fig. 9–10, as a compact reference:</p>
 <div class="grid2">
 <div class="card">
 <h4>STM32</h4>
