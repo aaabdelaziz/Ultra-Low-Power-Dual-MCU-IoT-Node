@@ -32,8 +32,12 @@ void pm_configure_unused_gpios_analog(void);
 void pm_disable_unused_clocks(void);
 
 /**
- * @brief Enters STOP mode (Deep Sleep).
- * CPU and core peripherals are stopped. Woken up by EXTI or RTC.
+ * @brief Enters STOP 2 mode (deepest RAM-retention deep sleep on
+ * STM32L4): CPU, most clocks, and most peripherals are stopped, but SRAM
+ * and register contents are preserved. Woken up by the DMA1 Channel1
+ * transfer-complete interrupt (raised when dma_adc.c's circular buffer
+ * finishes a lap) - this design does not use EXTI or RTC as a wakeup
+ * source. Returns after the wakeup interrupt has been serviced.
  */
 void pm_enter_stop_mode(void);
 

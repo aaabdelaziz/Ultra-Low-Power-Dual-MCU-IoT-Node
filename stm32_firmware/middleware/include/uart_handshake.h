@@ -21,7 +21,11 @@
 void uart_handshake_init(void);
 
 /**
- * @brief Wakes up the ESP32 (via GPIO toggle or UART break).
+ * @brief Wakes the ESP32 out of deep/modem sleep with a >=10ms low-to-high
+ * GPIO pulse on WAKE_PIN (see board_config.h), matching the RTC GPIO wake
+ * source configured on the ESP32 side. Blocks for the pulse duration plus
+ * a fixed settle delay, so the ESP32's own UART peripheral is up before
+ * the caller starts sending frame bytes.
  */
 void uart_wake_esp32(void);
 

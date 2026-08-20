@@ -20,32 +20,99 @@ This repository contains the firmware for a dual-MCU IoT telemetry node, utilizi
 - **Connectivity:** Implemented using ESP-IDF. Connects to a Wi-Fi network and publishes JSON or binary structs to an MQTT broker.
 - **Communication:** Remains asleep or in modem-sleep until woken by the STM32. Reads UART frames, validates CRC, and replies with an ACK/NACK.
 
+## Sensor Inputs & Cloud Outputs
+
+### Inputs (STM32 side)
+
+The STM32 samples three analog channels on ADC1, free-running through DMA1 into a circular buffer (`dma_adc.c`), and averages `ADC_BUFFER_DEPTH` (16) samples per channel before each transmission. Values are raw 12-bit ADC codes (0-4095) — no volts/°C conversion is applied anywhere in this firmware; a consumer of the MQTT data (or a future addition to `app/src/main.c`) would need to apply that conversion.
+
+| Channel index | Pin | ADC1 input | Measures                     | `telemetry_payload_t` field |
+|---------------|-----|------------|-------------------------------|------------------------------|
+| 0             | PA1 | ADC1_IN6   | Battery voltage (via divider) | `battery_mv`                 |
+| 1             | PA4 | ADC1_IN9   | Temperature sensor            | `temp_sensor`                |
+| 2             | PA5 | ADC1_IN10  | Generic/spare analog input    | `adc_ch1`                    |
+
+Pin/channel numbers are the single source of truth in `stm32_firmware/drivers/include/board_config.h` — change hardware wiring there, not in `dma_adc.c`. Two more fields round out the payload: `timestamp_ms` (currently always `0` — no RTC is configured in this design) and `status_flags` (bit0 = system OK, set every cycle).
+
+### Outputs (ESP32 side)
+
+The ESP32 republishes each validated payload as JSON over MQTT:
+
+- **Topic:** `telemetry/node_1`
+- **Broker:** configurable via menuconfig (`CONFIG_ESP_MQTT_BROKER_URI`); defaults to `mqtt://test.mosquitto.org` if unset.
+- **Payload:** `{"ts":<uint32>,"batt_mv":<uint16>,"temp":<uint16>,"adc":<uint16>,"status":<uint8>}` — same raw values as the table above, just JSON-formatted in `mqtt_publisher_task()`.
+
+There is also a smaller, non-cloud-facing output: for every frame it receives, the ESP32 sends a single ACK (`0x06`) or NACK (`0x15`) byte back to the STM32 over the same UART link, which is what `uart_send_telemetry_and_wait_ack()` on the STM32 side blocks on.
+
+## Low-Power Operation
+
+Only the STM32 side implements explicit low-power control in this repository. The ESP32 side relies on ESP-IDF's own Wi-Fi power-save behavior and does not currently call any explicit sleep API — see the comment in `main.cpp`'s idle loop.
+
+### STM32 duty cycle
+
+The STM32 spends the overwhelming majority of its time in **STOP 2** (the deepest RAM-retention sleep mode STM32L4 offers) and only wakes briefly to move data:
+
+1. **Boot, once:** `pm_init()` enables the PWR peripheral clock; `pm_configure_unused_gpios_analog()` sets every GPIOA pin to Analog mode (eliminating Schmitt-trigger leakage current on floating pins) and then re-opens only the pins this firmware actually drives (the wake pin, USART2 TX/RX); `pm_disable_unused_clocks()` is a documented no-op today, kept as the one auditable place to gate off a future driver's clock; `systick_delay_init()` brings up the millisecond delay primitive used later; then `uart_handshake_init()` and `dma_adc_init()` bring up the peripherals.
+2. **Free-running acquisition:** `dma_adc_start()` arms DMA1 and starts ADC1's continuous 3-channel scan. From here, new samples land in the circular buffer entirely in hardware — the CPU is not involved until a full lap completes.
+3. **Sleep:** the main loop calls `pm_enter_stop_mode()`, which selects STOP 2 and executes `__WFI()`, halting the core.
+4. **Wake:** the only interrupt enabled to break STOP 2 is DMA1's transfer-complete interrupt, which fires once per full lap of the circular buffer and just sets a flag — no work happens in interrupt context.
+5. **Back in the main loop:** the flag is seen, each channel is averaged, a `telemetry_payload_t` is packaged, the ESP32 is pulsed awake, the framed/CRC'd payload is sent and ACKed, and the loop calls `pm_enter_stop_mode()` again.
+
+### Why this is low-power
+
+- **No busy-polling for samples.** ADC1+DMA1 free-run in hardware while the CPU sleeps; the CPU wakes once per full buffer lap, not once per sample.
+- **No floating-pin leakage.** Every unused GPIOA pin is forced to Analog mode at boot.
+- **Deepest retention sleep available.** STOP 2 keeps SRAM/register state (no re-init on wake) while cutting core, most clocks, and most peripherals.
+- **Minimal clock footprint.** Only the peripherals actually used (PWR, GPIOA, ADC, DMA1, USART2, SysTick) are ever clocked.
+- **Communication is bursty, not continuous.** The ESP32 and its power-hungry Wi-Fi radio are only woken for the few tens of milliseconds it takes to transmit one payload and get an ACK.
+
 ## Repository Structure
 
 ```
 ├── common/
-│   └── protocol_spec.h      # Shared structs, framing protocol, and CRC definition
+│   └── protocol_spec.h              # Shared frame/payload structs + CRC16 — the wire format both MCUs agree on
 ├── esp32_firmware/
-│   ├── CMakeLists.txt       # ESP-IDF project configuration
-│   └── main/                # ESP32 FreeRTOS application
-│       ├── CMakeLists.txt
-│       ├── main.cpp
-│       ├── uart_receiver.cpp
-│       ├── uart_receiver.h
-│       ├── wifi_mqtt_client.cpp
-│       └── wifi_mqtt_client.h
+│   ├── CMakeLists.txt                # ESP-IDF project bootstrap
+│   ├── main/
+│   │   ├── CMakeLists.txt
+│   │   └── main.cpp                   # Composition root: creates the queue, starts both components' tasks
+│   └── components/                    # Active ESP-IDF components (auto-discovered by the build)
+│       ├── uart_receiver/
+│       │   ├── include/uart_receiver.h
+│       │   └── uart_receiver.cpp      # Parses STM32 UART frames, validates CRC, ACK/NACKs, queues valid payloads
+│       └── wifi_mqtt_client/
+│           ├── include/wifi_mqtt_client.h
+│           └── wifi_mqtt_client.cpp   # Wi-Fi + MQTT client; drains the queue and publishes JSON telemetry
 └── stm32_firmware/
-   ├── CMakeLists.txt       # STM32 CMake configuration
-   ├── include/             # STM32 headers
-   │   ├── dma_adc.h
-   │   ├── power_manager.h
-   │   └── uart_handshake.h
-   └── src/                 # STM32 bare-metal C source code
-      ├── dma_adc.c
-      ├── main.c
-      ├── power_manager.c
-      └── uart_handshake.c
+    ├── CMakeLists.txt                 # Bare-metal ARM GCC cross-compile configuration
+    ├── app/src/main.c                 # Composition root: sense -> transmit -> sleep loop
+    ├── drivers/
+    │   ├── include/ + src/board_config.h       # Single source of truth for pin/channel assignments
+    │   ├── include/ + src/power_manager.[ch]   # Clock gating, GPIO leakage elimination, STOP2 sleep entry
+    │   ├── include/ + src/dma_adc.[ch]         # Free-running ADC1+DMA1 circular-buffer sampling/averaging
+    │   └── include/ + src/systick_delay.[ch]   # Blocking millisecond delay primitive
+    ├── middleware/include/ + src/uart_handshake.[ch]  # Frames/sends telemetry over USART2, waits for ACK
+    └── CMSIS/                          # Vendored ARM CMSIS + ST device headers, not project code
 ```
+
+> **Note:** `esp32_firmware/uart_receiver/`, `esp32_firmware/wifi_mqtt_client/`, and `esp32_firmware/main.cpp` (at the `esp32_firmware/` root) are older duplicates left over from before the code was split into ESP-IDF `components/` — they are not referenced by any `CMakeLists.txt` and are not part of the actual build. Edit the copies under `components/` and `main/` instead.
+
+## Module Reference
+
+What each module is responsible for producing:
+
+| Module                                             | What it produces                                                                                                   |
+|-----------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------|
+| `common/protocol_spec.h`                             | The shared UART wire format both MCUs compile against: `telemetry_payload_t`, `uart_frame_t`, sync/ACK/NACK byte constants, and `calculate_crc16()`. |
+| `stm32_firmware/drivers/board_config.h`              | The one pin/ADC-channel mapping every other STM32 module reads. No functions — just the hardware-to-name mapping.   |
+| `stm32_firmware/drivers/power_manager.[ch]`          | Low-power state transitions: clock gating, GPIO leakage elimination, and STOP 2 sleep entry/exit.                    |
+| `stm32_firmware/drivers/dma_adc.[ch]`                | Averaged 12-bit ADC readings per channel, from a free-running ADC1+DMA1 pipeline the CPU does not service per-sample. |
+| `stm32_firmware/drivers/systick_delay.[ch]`          | A blocking millisecond delay (`delay_ms()`), used for the ESP32 wake-pulse timing and ADC regulator settle waits.     |
+| `stm32_firmware/middleware/uart_handshake.[ch]`      | A validated, CRC-checked, ACK-waited UART transmission of one `telemetry_payload_t` to the ESP32.                     |
+| `stm32_firmware/app/src/main.c`                      | The STM32-side composition root: the sense -> transmit -> sleep loop that calls everything above, in order.          |
+| `esp32_firmware/components/uart_receiver`            | A stream of validated `telemetry_payload_t` values, parsed byte-by-byte from the STM32's framed UART stream and pushed onto a FreeRTOS queue. |
+| `esp32_firmware/components/wifi_mqtt_client`         | Wi-Fi connectivity plus MQTT-published JSON telemetry on the cloud broker, drained from that same queue.              |
+| `esp32_firmware/main/main.cpp`                       | The ESP32-side composition root: creates the queue and starts both components' FreeRTOS tasks.                       |
 
 ## Documentation
 
