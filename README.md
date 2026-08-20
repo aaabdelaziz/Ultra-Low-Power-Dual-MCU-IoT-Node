@@ -2,6 +2,8 @@
 
 This repository contains the firmware for a dual-MCU IoT telemetry node, utilizing an STM32 for ultra-low-power bare-metal peripheral management and data acquisition, and an ESP32 for Wi-Fi/MQTT connectivity.
 
+📖 **[View the full codebase documentation](https://htmlpreview.github.io/?https://github.com/aaabdelaziz/Ultra-Low-Power-Dual-MCU-IoT-Node/blob/main/CODEBASE_DOCUMENTATION.html)** — architecture, state machines, timing diagrams, and register-level details for [`CODEBASE_DOCUMENTATION.html`](CODEBASE_DOCUMENTATION.html) (GitHub does not render raw HTML inline, so use the link above to view it rendered).
+
 ## Architecture Overview
 
 ### STM32 (MCU 1)
