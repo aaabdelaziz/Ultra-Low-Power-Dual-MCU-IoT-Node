@@ -66,6 +66,77 @@ The STM32 spends the overwhelming majority of its time in **STOP 2** (the deepes
 - **Minimal clock footprint.** Only the peripherals actually used (PWR, GPIOA, ADC, DMA1, USART2, SysTick) are ever clocked.
 - **Communication is bursty, not continuous.** The ESP32 and its power-hungry Wi-Fi radio are only woken for the few tens of milliseconds it takes to transmit one payload and get an ACK.
 
+## Scheduler & Task Architecture
+
+### ESP32 side: FreeRTOS, preemptive priority scheduler
+
+This project creates 2 of its own tasks; ESP-IDF's Wi-Fi driver and the MQTT client library each spawn their own internal task too, so 4 tasks are active in total once running.
+
+| Task | Entry function | Priority | Stack | Created | Blocks on |
+|---|---|---|---|---|---|
+| `uart_rx_task` | `uart_receiver_task()` | 5 | 4096 | `main.cpp` via `xTaskCreate` | `uart_read_bytes()`, 20-tick (~20ms) timeout |
+| `mqtt_pub_task` | `mqtt_publisher_task()` | 4 | 4096 | `main.cpp` via `xTaskCreate` | `xQueueReceive(..., portMAX_DELAY)` |
+| `mqtt_task` (library) | `esp_mqtt_task()` | ESP-IDF default | library-configured | internally by `esp_mqtt_client_start()` inside `wifi_mqtt_init()` | MQTT socket I/O |
+| Wi-Fi driver task | internal to `esp_wifi` | ESP-IDF default | library-configured | internally by `esp_wifi_init()`/`esp_wifi_start()` | Wi-Fi driver events |
+
+Priority rationale (`main.cpp`, comment above the `xTaskCreate` calls): `uart_rx_task` outranks `mqtt_pub_task` (5 vs 4) because a late UART read risks losing bytes or dropping a whole frame, while a late MQTT publish just delays telemetry rather than losing it.
+
+FreeRTOS on ESP32 is preemptive: whichever *ready* task has the highest priority runs, and a higher-priority task that becomes ready immediately preempts a lower-priority one. Both app tasks spend nearly all their time blocked, not running:
+
+- `uart_rx_task` is not purely event-driven — `uart_read_bytes()`'s 20-tick timeout means it wakes and checks roughly every 20ms even with nothing to parse, then goes back to blocking.
+- `mqtt_pub_task` is purely event-driven — `portMAX_DELAY` means it only becomes ready when `uart_rx_task` calls `xQueueSend()`.
+
+### Event handling between tasks (ESP32)
+
+Two distinct hand-off mechanisms — don't conflate them:
+
+1. **Application data hand-off — a queue.** `telemetry_queue`, created once in `main.cpp` (`xQueueCreate(10, sizeof(telemetry_payload_t))`), is the one channel connecting the two app tasks: `uart_rx_task` calls `xQueueSend()` in `uart_receiver.cpp`, which unblocks `mqtt_pub_task`'s `xQueueReceive()` in `wifi_mqtt_client.cpp`. This is a direct task-to-task producer/consumer link.
+2. **Driver/system async notification — the ESP-IDF event loop.** `wifi_event_handler()` and `mqtt_event_handler()` are not called by either app task directly — they're callbacks registered with `esp_event_handler_instance_register()` / `esp_mqtt_client_register_event()` in `wifi_mqtt_init()`, and run on the default event loop's own task whenever the Wi-Fi driver or MQTT library posts an event (`WIFI_EVENT_STA_DISCONNECTED`, `IP_EVENT_STA_GOT_IP`, `MQTT_EVENT_CONNECTED`, ...). Neither app task blocks waiting on these; it's fire-and-forget pub/sub, not a queue between two tasks this project wrote.
+
+```mermaid
+sequenceDiagram
+    participant STM32
+    participant UART as uart_rx_task
+    participant Q as telemetry_queue
+    participant MQTT as mqtt_pub_task
+    participant EVT as event loop task
+    participant LIB as mqtt_task (library)
+
+    STM32->>UART: UART frame (woken via GPIO pulse)
+    UART->>UART: parse + validate CRC
+    UART-->>STM32: ACK / NACK
+    UART->>Q: xQueueSend(payload)
+    Note over UART,Q: producer/consumer queue,<br/>not an OS event
+    Q-->>MQTT: xQueueReceive() unblocks
+    MQTT->>LIB: esp_mqtt_client_publish()
+    LIB-->>EVT: MQTT_EVENT_PUBLISHED
+    EVT->>MQTT: mqtt_event_handler() callback (log only)
+```
+
+### STM32 side: no scheduler — superloop + a single interrupt
+
+No RTOS, so there is no task table to draw. Only two execution contexts exist:
+
+- **Main loop** (`app/src/main.c`), running forever — this is the entire "schedule."
+- **`DMA1_Channel1_IRQHandler`** (`dma_adc.c`) — the only interrupt this firmware enables anywhere. `NVIC_EnableIRQ(DMA1_Channel1_IRQn)` is called with no explicit `NVIC_SetPriority()`, and it is the only `NVIC_EnableIRQ()` call in the whole project — SysTick never enables `TICKINT` (`systick_delay_init()` only sets `CLKSOURCE`/`ENABLE`, so `delay_ms()` polls `COUNTFLAG` instead of interrupting). With one interrupt source, priority-level reasoning is moot: there is nothing for it to preempt or be preempted by.
+
+The hand-off between the ISR and the main loop is the direct STM32 analogue of the ESP32's queue, just far simpler because there is only one producer, one consumer, and one bit of information: `data_ready_flag`, `volatile`, set only in the ISR, read/cleared only in the main loop (`dma_adc.c`). No queue primitive is needed or available bare-metal; a single-byte flag is sufficient because the write is atomic on Cortex-M4 and there is exactly one writer per side.
+
+```mermaid
+sequenceDiagram
+    participant DMA as DMA1_Channel1_IRQHandler
+    participant Main as main() loop
+    participant ESP32
+
+    Main->>Main: pm_enter_stop_mode() -> __WFI()
+    DMA->>DMA: buffer lap complete
+    DMA->>Main: sets data_ready_flag = 1 (wakes CPU)
+    Main->>Main: average channels, clear flag
+    Main->>ESP32: uart_wake_esp32() + framed UART send
+    ESP32-->>Main: ACK / NACK
+    Main->>Main: pm_enter_stop_mode() again
+```
+
 ## Repository Structure
 
 ```
